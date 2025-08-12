@@ -1,0 +1,6 @@
+fastapi
+PyYAML
+click
+pydantic-settings
+uvicorn
+ifaddr

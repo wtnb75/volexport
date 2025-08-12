@@ -1,0 +1,36 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+  default:
+    cmds:
+      - task -l
+    silent: true
+
+  build:wheel:
+    desc: build wheel
+    cmds:
+      - python -m build -w
+
+  build:image:
+    desc: build container image
+    cmds:
+      - docker build -t volexp .
+
+  install:deps:
+    desc: install dependencies
+    cmds:
+      - pip install -r requirements.txt
+
+  test:
+    desc: run unittest
+    env:
+      PYTHONPATH: "{{.TASK_DIR}}"
+      VOLEXP_VG: vg0
+      VOLEXP_NICS: '["en6"]'
+    cmds:
+      - pytest -xs --ff

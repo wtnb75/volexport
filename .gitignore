@@ -1,0 +1,10 @@
+*tmp*
+*~
+*.swp
+*.bak
+*.pyc
+__pycache__
+*.egg-info
+dist/
+cover
+.coverage
