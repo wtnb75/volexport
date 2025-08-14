@@ -216,3 +216,6 @@ class LV(Base):
             size = int(vol["LV Size"].removesuffix(" B"))
             return dict(name=vol["LV Name"], created=created.isoformat(), size=size, used=int(vol["# open"]))
         return None
+
+    def volume_filename(self):
+        return f"/dev/{self.vgname}/{self.name}"

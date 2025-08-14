@@ -125,7 +125,8 @@ def list_export():
 
 @api.post("/export")
 def create_export(arg: ExportRequest):
-    return ExportResponse.model_validate(Tgtd().export_volume(filename=arg.volname, acl=arg.acl))
+    filename = LV(config.VG, arg.volname).volume_filename()
+    return ExportResponse.model_validate(Tgtd().export_volume(filename=filename, acl=arg.acl))
 
 
 @api.get("/export/{name}")
