@@ -1,4 +1,5 @@
 import unittest
+import os
 
 from volexport import lvm2
 

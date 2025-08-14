@@ -201,10 +201,15 @@ class Tgtd:
             tgtid = tgtid.removeprefix("Target ")
             name = tgtinfo["name"]
             itn = tgtinfo.get("I_T nexus information", {})
-            if itn is None:
-                connected_from = []
-            else:
-                connected_from = [x.get("Connection", {}).get("IP Address") for x in itn.values()]
+            connected_from = []
+            if itn is not None:
+                connected_from = [
+                    {
+                        "address": x.get("Connection", {}).get("IP Address"),
+                        "initiator": x.get("Initiator").split(" ")[0],
+                    }
+                    for x in itn.values()
+                ]
             luns = tgtinfo.get("LUN information", {})
             volumes = []
             for lun in luns.values():
@@ -214,7 +219,14 @@ class Tgtd:
             accounts = list(tgtinfo.get("Account information", {}).keys())
             acls = list(tgtinfo.get("ACL information", {}).keys())
             res.append(
-                dict(tid=tgtid, name=name, connected=connected_from, volumes=volumes, accounts=accounts, acl=acls)
+                dict(
+                    tid=tgtid,
+                    tartetname=name,
+                    connected=connected_from,
+                    volumes=volumes,
+                    users=accounts,
+                    acl=acls,
+                )
             )
         return res
 
@@ -244,6 +256,7 @@ class Tgtd:
             protocol=self.lld,
             addresses=addrs,  # list of host:port
             targetname=name,
+            tid=tid,
             user=user,
             passwd=passwd,
             lun=lun,

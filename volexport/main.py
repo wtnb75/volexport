@@ -1,3 +1,4 @@
+import os
 import click
 import uvicorn
 import functools
@@ -50,8 +51,8 @@ def verbose_option(func):
 @click.option("--vg", help="LVM volume group")
 @click.option("--host", default="127.0.0.1", help="listen host")
 @click.option("--port", default=8080, type=int, help="listen port")
-def server(host, port, **kwargs):
-    import os
+@click.option("--log-config", type=click.Path(), help="uvicorn log config")
+def server(host, port, log_config, **kwargs):
     import json
 
     for k, v in kwargs.items():
@@ -68,10 +69,29 @@ def server(host, port, **kwargs):
     from .config import config
 
     _log.debug("config: %s", config)
-    getLogger("uvicorn.access").setLevel("INFO")
-    getLogger("uvicorn.error").setLevel("INFO")
+    if log_config is None:
+        getLogger("uvicorn").setLevel("INFO")
 
-    uvicorn.run(api, host=host, port=port, log_config=None)
+    uvicorn.run(api, host=host, port=port, log_config=log_config)
+
+
+@cli.command()
+@click.option("--format", type=click.Choice(["yaml", "json"]), default="yaml", show_default=True)
+def apispec(format):
+    import sys
+
+    os.environ["VOLEXP_VG"] = "dummy"
+    os.environ["VOLEXP_NICS"] = "[]"
+    from .api import api
+
+    if format == "yaml":
+        import yaml
+
+        yaml.dump(api.openapi(), stream=sys.stdout)
+    elif format == "json":
+        import json
+
+        json.dump(api.openapi(), fp=sys.stdout)
 
 
 if __name__ == "__main__":

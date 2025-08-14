@@ -113,7 +113,7 @@ class VG(Base):
     def get(self) -> dict | None:
         if self.name is None:
             return None
-        return self.find_by(self.getlist(), "VG Name", self.name)
+        return runparse(["vgdisplay", "--unit", "b", self.name], indent=2, width=21)[0]
 
     @override
     def getlist(self) -> list[dict]:
