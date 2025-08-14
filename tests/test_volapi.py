@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from volexport.api import api
 
 
-class TestAPI(unittest.TestCase):
+class TestVolumeAPI(unittest.TestCase):
     def test_healthcheck(self):
         res = TestClient(api).get("/health")
         self.assertEqual(200, res.status_code)

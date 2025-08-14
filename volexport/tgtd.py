@@ -38,7 +38,7 @@ class Tgtd:
                         v = kv[1].strip()
                         if v == "":
                             v = None
-                        if k in ("LUN", "I_T nexus"):  # special case
+                        if k in ("LUN", "I_T nexus", "Connection"):  # special case
                             k = f"{k} {v}"
                         yield {"indent": indent, "key": k, "value": v}
                 elif len(line[indent:]) != 0:
@@ -203,9 +203,12 @@ class Tgtd:
             itn = tgtinfo.get("I_T nexus information", {})
             connected_from = []
             if itn is not None:
+                addrs = []
+                for itnv in itn.values():
+                    addrs.extend([v.get("IP Address") for k, v in itnv.items() if k.startswith("Connection")])
                 connected_from = [
                     {
-                        "address": x.get("Connection", {}).get("IP Address"),
+                        "address": addrs,
                         "initiator": x.get("Initiator").split(" ")[0],
                     }
                     for x in itn.values()
@@ -220,8 +223,9 @@ class Tgtd:
             acls = list(tgtinfo.get("ACL information", {}).keys())
             res.append(
                 dict(
+                    protocol=self.lld,
                     tid=tgtid,
-                    tartetname=name,
+                    targetname=name,
                     connected=connected_from,
                     volumes=volumes,
                     users=accounts,

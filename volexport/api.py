@@ -47,7 +47,7 @@ class ExportResponse(BaseModel):
 
 
 class ClientInfo(BaseModel):
-    address: str
+    address: list[str]
     initiator: str
 
 

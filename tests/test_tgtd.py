@@ -143,6 +143,8 @@ Target 1: iqn.def
             Initiator: iqn.1996-04.org.alpinelinux:01:c1f2520715f alias: test1
             Connection: 0
                 IP Address: 192.168.64.41
+            Connection: 1
+                IP Address: 192.168.64.42
     LUN information:
         LUN: 0
             Type: controller
@@ -170,7 +172,7 @@ Target 1: iqn.def
             SWP: No
             Thin-provisioning: No
             Backing store type: rdwr
-            Backing store path: /home/alpine/test.img
+            Backing store path: /dev/vg0/vol01
             Backing store flags:
         LUN: 2
             Type: disk
@@ -184,7 +186,7 @@ Target 1: iqn.def
             SWP: No
             Thin-provisioning: No
             Backing store type: rdwr
-            Backing store path: /home/alpine/test2.img
+            Backing store path: /dev/vg0/vol02
             Backing store flags:
     Account information:
         user123
@@ -203,7 +205,8 @@ Target 1: iqn.def
                     "I_T nexus 3": {
                         "name": "3",
                         "Initiator": "iqn.1996-04.org.alpinelinux:01:c1f2520715f alias: test1",
-                        "Connection": {"name": "0", "IP Address": "192.168.64.41"},
+                        "Connection 0": {"name": "0", "IP Address": "192.168.64.41"},
+                        "Connection 1": {"name": "1", "IP Address": "192.168.64.42"},
                     }
                 },
                 "LUN information": {
@@ -236,7 +239,7 @@ Target 1: iqn.def
                         "SWP": "No",
                         "Thin-provisioning": "No",
                         "Backing store type": "rdwr",
-                        "Backing store path": "/home/alpine/test.img",
+                        "Backing store path": "/dev/vg0/vol01",
                         "Backing store flags": None,
                     },
                     "LUN 2": {
@@ -252,7 +255,7 @@ Target 1: iqn.def
                         "SWP": "No",
                         "Thin-provisioning": "No",
                         "Backing store type": "rdwr",
-                        "Backing store path": "/home/alpine/test2.img",
+                        "Backing store path": "/dev/vg0/vol02",
                         "Backing store flags": None,
                     },
                 },
