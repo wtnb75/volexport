@@ -138,3 +138,12 @@ class TestVolumeAPI(unittest.TestCase):
         self.assertEqual(200, res.status_code)
         self.assertEqual({"free": 4194304, "total": 68178411520, "used": 68174217216, "volumes": 1}, res.json())
         run.assert_called_once_with(["sudo", "vgdisplay", "--unit", "b", "vg0"], capture_output=True, encoding="utf-8")
+
+    @patch("subprocess.run")
+    def test_statsvol_notfound(self, run):
+        run.return_value.exit_code = 0
+        run.return_value.stdout = ""
+        res = TestClient(api).get("/stats/volume")
+        self.assertEqual(404, res.status_code)
+        self.assertEqual({"detail": "pool not found"}, res.json())
+        run.assert_called_once_with(["sudo", "vgdisplay", "--unit", "b", "vg0"], capture_output=True, encoding="utf-8")

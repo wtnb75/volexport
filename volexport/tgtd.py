@@ -163,7 +163,7 @@ class Tgtd:
         return self.tgtadm(lld=self.lld, mode="portal", op="delete", param=dict(portal=hostport))
 
     def myaddress(self):
-        addrs = [x.removesuffix(",1") for x in self.portal_list()]
+        portal_addrs = [x.removesuffix(",1") for x in self.portal_list()]
         res = []
         ifaddrs = {AF_INET: [], AF_INET6: []}
         for adapter in ifaddr.get_adapters():
@@ -180,7 +180,8 @@ class Tgtd:
                         ifaddrs[AF_INET].append(addr)
                     elif ip.is_IPv6:
                         ifaddrs[AF_INET6].append(addr)
-        for a in addrs:
+        _log.debug("ifaddrs: %s", ifaddrs)
+        for a in portal_addrs:
             u = urlsplit("//" + a)
             port = u.port or 3260
             _log.warning("url: %s (hostname=%s)", u, u.hostname)

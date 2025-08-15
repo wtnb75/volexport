@@ -114,7 +114,10 @@ class VG(Base):
     def get(self) -> dict | None:
         if self.name is None:
             return None
-        return runparse(["vgdisplay", "--unit", "b", self.name], indent=2, width=21)[0]
+        res = runparse(["vgdisplay", "--unit", "b", self.name], indent=2, width=21)
+        if len(res) == 0:
+            return None
+        return res[0]
 
     @override
     def getlist(self) -> list[dict]:
