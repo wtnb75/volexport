@@ -1,6 +1,6 @@
 import unittest
 import subprocess
-from unittest.mock import patch, ANY
+from unittest.mock import patch, ANY, MagicMock
 from fastapi.testclient import TestClient
 from volexport.api import api
 
@@ -25,9 +25,7 @@ class TestExportAPI(unittest.TestCase):
             encoding="utf-8",
         )
 
-    @patch("subprocess.run")
-    def test_exportlist(self, run):
-        target_show = """
+    target_show_str = """
 Target 1: iqn.def
     System information:
         Driver: iscsi
@@ -88,8 +86,11 @@ Target 1: iqn.def
         0.0.0.0/0
         192.168.64.0/24
 """
+
+    @patch("subprocess.run")
+    def test_exportlist(self, run):
         run.return_value.exit_code = 0
-        run.return_value.stdout = target_show
+        run.return_value.stdout = self.target_show_str
         res = TestClient(api).get("/export")
         self.assertEqual(200, res.status_code)
         self.assertEqual(
@@ -106,8 +107,328 @@ Target 1: iqn.def
                     ],
                     acl=["0.0.0.0/0", "192.168.64.0/24"],
                     users=["user123"],
-                    volumes=["/dev/vg0/vol01", "/dev/vg0/vol02"],
+                    volumes=["vol01", "vol02"],
                 )
             ],
             res.json(),
+        )
+
+    @patch("subprocess.run")
+    def test_exportread(self, run):
+        run.return_value.exit_code = 0
+        run.return_value.stdout = self.target_show_str
+        res = TestClient(api).get("/export/iqn.def")
+        self.assertEqual(200, res.status_code)
+        self.assertEqual(
+            dict(
+                protocol="iscsi",
+                tid=1,
+                targetname="iqn.def",
+                connected=[
+                    dict(
+                        initiator="iqn.1996-04.org.alpinelinux:01:c1f2520715f",
+                        address=["192.168.64.41", "192.168.64.42"],
+                    )
+                ],
+                acl=["0.0.0.0/0", "192.168.64.0/24"],
+                users=["user123"],
+                volumes=["vol01", "vol02"],
+            ),
+            res.json(),
+        )
+
+    @patch("subprocess.run")
+    @patch("volexport.tgtd.Path")
+    def test_exportcreate(self, path, run):
+        path.return_value.exists.return_value = True
+        listvol_str = """
+Target 1: iqn.def
+    System information:
+        Driver: iscsi
+        State: ready
+"""
+        listvol = MagicMock(exit_code=0, stdout=listvol_str)
+        simple_ok = MagicMock(exit_code=0, stdout="")
+        portal_list = MagicMock(exit_code=0, stdout="Portal 0.0.0.0:3260,1")
+        run.side_effect = [
+            listvol,
+            simple_ok,  # create target
+            simple_ok,  # create lun
+            simple_ok,  # create account
+            simple_ok,  # bind account
+            simple_ok,  # setup ACL
+            portal_list,
+        ]
+        expected = {
+            "protocol": "iscsi",
+            "addresses": [],
+            "targetname": ANY,
+            "tid": 2,
+            "user": ANY,
+            "passwd": ANY,
+            "lun": 1,
+            "acl": ["1.1.1.1/32"],
+        }
+        res = TestClient(api).post("/export", json={"volname": "vol00", "acl": ["1.1.1.1/32"]})
+        self.assertEqual(200, res.status_code)
+        self.assertEqual(expected, res.json())
+        self.assertEqual(7, run.call_count)
+        run.assert_any_call(
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        run.assert_any_call(
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "new", "--tid", "2", "--targetname", ANY],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        run.assert_any_call(
+            [
+                "sudo",
+                "tgtadm",
+                "--lld",
+                "iscsi",
+                "--mode",
+                "logicalunit",
+                "--op",
+                "new",
+                "--tid",
+                "2",
+                "--lun",
+                "1",
+                "--backing-store",
+                "/dev/vg0/vol00",
+                "--bstype",
+                "rdwr",
+            ],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        run.assert_any_call(
+            [
+                "sudo",
+                "tgtadm",
+                "--lld",
+                "iscsi",
+                "--mode",
+                "account",
+                "--op",
+                "new",
+                "--user",
+                ANY,
+                "--password",
+                ANY,
+            ],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        run.assert_any_call(
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "account", "--op", "bind", "--tid", "2", "--user", ANY],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        run.assert_any_call(
+            [
+                "sudo",
+                "tgtadm",
+                "--lld",
+                "iscsi",
+                "--mode",
+                "target",
+                "--op",
+                "bind",
+                "--tid",
+                "2",
+                "--initiator-address",
+                "1.1.1.1/32",
+            ],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        run.assert_any_call(
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "portal", "--op", "show"],
+            capture_output=True,
+            encoding="utf-8",
+        )
+
+    @patch("subprocess.run")
+    def test_exportdelete_inuse(self, run):
+        run.return_value.exit_code = 0
+        run.return_value.stdout = self.target_show_str
+        res = TestClient(api).delete("/export/iqn.def")
+        self.assertEqual(400, res.status_code)
+
+    @patch("subprocess.run")
+    def test_exportdelete_notfound(self, run):
+        run.return_value.exit_code = 0
+        run.return_value.stdout = self.target_show_str
+        res = TestClient(api).delete("/export/iqn.notfound")
+        self.assertEqual(404, res.status_code)
+
+    @patch("subprocess.run")
+    def test_exportdelete(self, run):
+        run.return_value.exit_code = 0
+        run.return_value.stdout = """
+Target 1: iqn.def
+    System information:
+        Driver: iscsi
+        State: ready
+    I_T nexus information:
+    LUN information:
+        LUN: 0
+            Type: controller
+            SCSI ID: IET     00010000
+            SCSI SN: beaf10
+            Size: 0 MB, Block size: 1
+            Online: Yes
+            Removable media: No
+            Prevent removal: No
+            Readonly: No
+            SWP: No
+            Thin-provisioning: No
+            Backing store type: null
+            Backing store path: None
+            Backing store flags:
+        LUN: 1
+            Type: disk
+            SCSI ID: IET     00010001
+            SCSI SN: beaf11
+            Size: 10737 MB, Block size: 512
+            Online: Yes
+            Removable media: No
+            Prevent removal: No
+            Readonly: No
+            SWP: No
+            Thin-provisioning: No
+            Backing store type: rdwr
+            Backing store path: /dev/vg0/vol01
+            Backing store flags:
+        LUN: 2
+            Type: disk
+            SCSI ID: IET     00010002
+            SCSI SN: beaf12
+            Size: 107374 MB, Block size: 512
+            Online: Yes
+            Removable media: No
+            Prevent removal: No
+            Readonly: No
+            SWP: No
+            Thin-provisioning: No
+            Backing store type: rdwr
+            Backing store path: /dev/vg0/vol02
+            Backing store flags:
+    Account information:
+        user123
+    ACL information:
+        0.0.0.0/0
+        192.168.64.0/24
+"""
+        res = TestClient(api).delete("/export/iqn.def")
+        self.assertEqual(200, res.status_code)
+        self.assertEqual(8, run.call_count)
+        run.assert_any_call(
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        run.assert_any_call(
+            [
+                "sudo",
+                "tgtadm",
+                "--lld",
+                "iscsi",
+                "--mode",
+                "account",
+                "--op",
+                "unbind",
+                "--tid",
+                "1",
+                "--user",
+                "user123",
+            ],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        run.assert_any_call(
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "account", "--op", "delete", "--user", "user123"],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        run.assert_any_call(
+            [
+                "sudo",
+                "tgtadm",
+                "--lld",
+                "iscsi",
+                "--mode",
+                "target",
+                "--op",
+                "unbind",
+                "--tid",
+                "1",
+                "--initiator-address",
+                "0.0.0.0/0",
+            ],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        run.assert_any_call(
+            [
+                "sudo",
+                "tgtadm",
+                "--lld",
+                "iscsi",
+                "--mode",
+                "target",
+                "--op",
+                "unbind",
+                "--tid",
+                "1",
+                "--initiator-address",
+                "192.168.64.0/24",
+            ],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        run.assert_any_call(
+            [
+                "sudo",
+                "tgtadm",
+                "--lld",
+                "iscsi",
+                "--mode",
+                "logicalunit",
+                "--op",
+                "delete",
+                "--tid",
+                "1",
+                "--lun",
+                "2",
+            ],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        run.assert_any_call(
+            [
+                "sudo",
+                "tgtadm",
+                "--lld",
+                "iscsi",
+                "--mode",
+                "logicalunit",
+                "--op",
+                "delete",
+                "--tid",
+                "1",
+                "--lun",
+                "1",
+            ],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        run.assert_any_call(
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "delete", "--tid", "1"],
+            capture_output=True,
+            encoding="utf-8",
         )

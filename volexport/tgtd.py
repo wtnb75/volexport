@@ -238,6 +238,8 @@ class Tgtd:
         assert Path(filename).exists()
         iqname = secrets.token_hex(10)
         tgts = [x.removeprefix("Target ") for x in self.target_list().keys() if x.startswith("Target ")]
+        _log.debug("existing target: %s", tgts)
+        tgts.append("0")
         max_tgt = max([int(x) for x in tgts])
         tid = max_tgt + 1
         lun = 1
@@ -284,7 +286,7 @@ class Tgtd:
                 _log.warning("client connected: %s", itn)
                 if not force:
                     addrs = [x.get("Connection", {}).get("IP Address") for x in itn.values()]
-                    raise Exception(f"client connected: {addrs}")
+                    raise FileExistsError(f"client connected: {addrs}")
             try:
                 accounts = data.get("Account information", {})
                 if accounts is not None:
@@ -297,7 +299,9 @@ class Tgtd:
                         self.target_unbind_address(tid=tgtid, addr=acl)
                 luns = data.get("LUN information", {})
                 if luns is not None:
-                    for lun in data.get("LUN information", {}).values():
+                    for lun in sorted(
+                        data.get("LUN information", {}).values(), key=lambda f: int(f["name"]), reverse=True
+                    ):
                         if lun.get("Type") != "controller":
                             lunid = int(lun["name"])
                             self.lun_delete(tid=tgtid, lun=lunid)

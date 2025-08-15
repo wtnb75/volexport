@@ -79,6 +79,11 @@ def notfound(request: Request, exc: FileNotFoundError):
     return JSONResponse(status_code=404, content=dict(detail="\n".join(exc.args)))
 
 
+@api.exception_handler(FileExistsError)
+def inuse(request: Request, exc: FileExistsError):
+    return JSONResponse(status_code=400, content=dict(detail="\n".join(exc.args)))
+
+
 @api.exception_handler(NotImplementedError)
 def notimplemented(request: Request, exc: NotImplementedError):
     return JSONResponse(status_code=501, content=dict(detail=str(exc)))
@@ -118,20 +123,26 @@ def delete_volume(name) -> dict:
     return {}
 
 
+def _fixpath(data: dict) -> dict:
+    if "volumes" in data:
+        data["volumes"] = [LV(config.VG).volume_path2vol(x) for x in data["volumes"]]
+    return data
+
+
 @api.get("/export")
 def list_export():
-    return [ExportReadResponse.model_validate(x) for x in Tgtd().export_list()]
+    return [ExportReadResponse.model_validate(_fixpath(x)) for x in Tgtd().export_list()]
 
 
 @api.post("/export")
 def create_export(arg: ExportRequest):
-    filename = LV(config.VG, arg.volname).volume_filename()
+    filename = LV(config.VG, arg.volname).volume_vol2path()
     return ExportResponse.model_validate(Tgtd().export_volume(filename=filename, acl=arg.acl))
 
 
 @api.get("/export/{name}")
 def read_export(name):
-    res = [x for x in Tgtd().export_list() if x["name"] == name or x["tid"] == name]
+    res = [_fixpath(x) for x in Tgtd().export_list() if x["targetname"] == name or x["tid"] == name]
     if len(res) == 0:
         raise HTTPException(status_code=404, detail="export not found")
     return ExportReadResponse.model_validate(res[0])

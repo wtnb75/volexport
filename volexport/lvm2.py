@@ -1,5 +1,6 @@
 import shlex
 import datetime
+from pathlib import Path
 from abc import abstractmethod
 from .util import runcmd
 from .config import config
@@ -217,5 +218,10 @@ class LV(Base):
             return dict(name=vol["LV Name"], created=created.isoformat(), size=size, used=int(vol["# open"]))
         return None
 
-    def volume_filename(self):
+    def volume_vol2path(self):
         return f"/dev/{self.vgname}/{self.name}"
+
+    def volume_path2vol(self, name: str):
+        if not name.startswith(f"/dev/{self.vgname}/"):
+            raise Exception(f"invalid format: {name}, vg={self.vgname}")
+        return name.removeprefix(f"/dev/{self.vgname}/")
