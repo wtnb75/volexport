@@ -1,6 +1,5 @@
 import shlex
 import datetime
-from pathlib import Path
 from abc import abstractmethod
 from .util import runcmd
 from .config import config

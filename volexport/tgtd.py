@@ -38,7 +38,7 @@ class Tgtd:
                         v = kv[1].strip()
                         if v == "":
                             v = None
-                        if k in ("LUN", "I_T nexus", "Connection"):  # special case
+                        if k in ("LUN", "I_T nexus", "Connection", "Session"):  # special case
                             k = f"{k} {v}"
                         yield {"indent": indent, "key": k, "value": v}
                 elif len(line[indent:]) != 0:
@@ -112,6 +112,9 @@ class Tgtd:
     def lun_create(self, tid: int, lun: int, path: str, **kwargs):
         return self.tgtadm(lld=self.lld, mode="logicalunit", op="new", tid=tid, lun=lun, backing_store=path, **kwargs)
 
+    def lun_update(self, tid: int, lun: int, **kwargs):
+        return self.tgtadm(lld=self.lld, mode="logicalunit", op="update", tid=tid, lun=lun, params=kwargs)
+
     def lun_delete(self, tid: int, lun: int):
         return self.tgtadm(lld=self.lld, mode="logicalunit", op="delete", tid=tid, lun=lun)
 
@@ -119,6 +122,9 @@ class Tgtd:
         if outgoing:
             return self.tgtadm(lld=self.lld, mode="account", op="new", user=user, password=password, outgoing=None)
         return self.tgtadm(lld=self.lld, mode="account", op="new", user=user, password=password)
+
+    def account_list(self):
+        return self.parse(self.tgtadm(lld=self.lld, mode="account", op="show").stdout.splitlines())
 
     def account_delete(self, user: str, outgoing: bool = False):
         if outgoing:
@@ -161,6 +167,12 @@ class Tgtd:
 
     def portal_delete(self, hostport):
         return self.tgtadm(lld=self.lld, mode="portal", op="delete", param=dict(portal=hostport))
+
+    def list_session(self, tid: int):
+        return self.parse(self.tgtadm(lld=self.lld, mode="conn", op="show", tid=tid).stdout.splitlines())
+
+    def disconnect_session(self, tid: int, sid: int, cid: int):
+        return self.tgtadm(lld=self.lld, mode="conn", op="delete", tid=tid, sid=sid, cid=cid)
 
     def myaddress(self):
         portal_addrs = [x.removesuffix(",1") for x in self.portal_list()]
@@ -271,10 +283,16 @@ class Tgtd:
         )
 
     def get_export_bypath(self, filename: str):
-        pass
+        res = self.export_list()
+        for tgt in res:
+            if filename in tgt.get("volumes"):
+                return tgt
 
     def get_export_byname(self, targetname: str):
-        pass
+        res = self.export_list()
+        for tgt in res:
+            if targetname == tgt.get("targetname"):
+                return tgt
 
     def unexport_volume(self, targetname: str, force: bool = False):
         info = self.target_list()

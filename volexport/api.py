@@ -33,6 +33,7 @@ class VolumeReadResponse(BaseModel):
 class ExportRequest(BaseModel):
     volname: str
     acl: list[str]
+    readonly: bool = False
 
 
 class ExportResponse(BaseModel):
@@ -137,7 +138,9 @@ def list_export():
 @api.post("/export")
 def create_export(arg: ExportRequest):
     filename = LV(config.VG, arg.volname).volume_vol2path()
-    return ExportResponse.model_validate(Tgtd().export_volume(filename=filename, acl=arg.acl))
+    if arg.readonly:
+        params = dict(params=dict(readonly="1"))
+    return ExportResponse.model_validate(Tgtd().export_volume(filename=filename, acl=arg.acl, **params))
 
 
 @api.get("/export/{name}")
