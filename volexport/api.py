@@ -140,6 +140,8 @@ def create_export(arg: ExportRequest):
     filename = LV(config.VG, arg.volname).volume_vol2path()
     if arg.readonly:
         params = dict(params=dict(readonly="1"))
+    else:
+        params = {}
     return ExportResponse.model_validate(Tgtd().export_volume(filename=filename, acl=arg.acl, **params))
 
 
