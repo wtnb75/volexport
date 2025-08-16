@@ -1,3 +1,4 @@
 pytest
 pytest-env
 pytest-cov
+pytest-httpx
