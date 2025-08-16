@@ -26,11 +26,15 @@ tasks:
     cmds:
       - pip install -r requirements.txt
 
+  install:deps:dev:
+    desc: install dependencies(dev)
+    cmds:
+      - task: install:deps
+      - pip install -r requirements-dev.txt
+
   test:
     desc: run unittest
     env:
       PYTHONPATH: "{{.TASK_DIR}}"
-      VOLEXP_VG: vg0
-      VOLEXP_NICS: '["en6"]'
     cmds:
       - pytest -xs --ff
