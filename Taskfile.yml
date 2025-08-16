@@ -1,0 +1,40 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+  default:
+    cmds:
+      - task -l
+    silent: true
+
+  build:wheel:
+    desc: build wheel
+    cmds:
+      - python -m build -w
+
+  build:image:
+    desc: build container image
+    cmds:
+      - docker build -t volexp .
+
+  install:deps:
+    desc: install dependencies
+    cmds:
+      - pip install -r requirements.txt
+
+  install:deps:dev:
+    desc: install dependencies(dev)
+    cmds:
+      - task: install:deps
+      - pip install -r requirements-dev.txt
+
+  test:
+    desc: run unittest
+    env:
+      PYTHONPATH: "{{.TASK_DIR}}"
+    cmds:
+      - pytest -xs --ff
