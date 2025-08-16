@@ -11,6 +11,9 @@ permissions:
 
 jobs:
   build:
+    env:
+      VOLEXP_VG: vg0
+      VOLEXP_NICS: '["eth0"]'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
@@ -34,9 +37,6 @@ jobs:
       with:
         dirs: "cover docs"
         #pydist: dist
-      env:
-        VOLEXP_VG: vg0
-        VOLEXP_NICS: '["eth0"]'
     - uses: wtnb75/actions/docker@main
       with:
         push: 'true'
