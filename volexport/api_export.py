@@ -59,11 +59,7 @@ def list_export() -> list[ExportReadResponse]:
 @router.post("/export")
 def create_export(arg: ExportRequest) -> ExportResponse:
     filename = LV(config.VG, arg.volname).volume_vol2path()
-    if arg.readonly:
-        params = dict(params=dict(readonly="1"))
-    else:
-        params = {}
-    return ExportResponse.model_validate(Tgtd().export_volume(filename=filename, acl=arg.acl, **params))
+    return ExportResponse.model_validate(Tgtd().export_volume(filename=filename, acl=arg.acl, readonly=arg.readonly))
 
 
 @router.get("/export/{name}")
