@@ -34,9 +34,14 @@ jobs:
       with:
         output-dir: docs
         module: volexport
+    - name: api spec
+      shell: bash
+      run: |
+        mkdir -p api
+        PYTHONPATH=. python -m volexport.main apispec --format yaml > api/api-spec.yaml
     - uses: wtnb75/actions/merge-pages@main
       with:
-        dirs: "cover docs"
+        dirs: "cover docs api"
         #pydist: dist
     - name: Setup Pages
       uses: actions/configure-pages@v4
