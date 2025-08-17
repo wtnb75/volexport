@@ -8,6 +8,7 @@ from volexport.api import api
 
 class TestExportAPI(unittest.TestCase):
     maxDiff = None
+    run_basearg = dict(capture_output=True, encoding="utf-8", timeout=10.0, stdin=-3, start_new_session=True)
 
     def test_healthcheck(self):
         res = TestClient(api).get("/health")
@@ -21,9 +22,7 @@ class TestExportAPI(unittest.TestCase):
         self.assertEqual(500, res.status_code)
         self.assertEqual({"detail": ANY}, res.json())
         run.assert_called_once_with(
-            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"],
-            capture_output=True,
-            encoding="utf-8",
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"], **self.run_basearg
         )
 
     target_show_str = """
@@ -175,14 +174,11 @@ Target 1: iqn.def
         self.assertEqual(expected, res.json())
         self.assertEqual(7, run.call_count)
         run.assert_any_call(
-            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"],
-            capture_output=True,
-            encoding="utf-8",
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"], **self.run_basearg
         )
         run.assert_any_call(
             ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "new", "--tid", "2", "--targetname", ANY],
-            capture_output=True,
-            encoding="utf-8",
+            **self.run_basearg,
         )
         run.assert_any_call(
             [
@@ -203,8 +199,7 @@ Target 1: iqn.def
                 "--bstype",
                 "rdwr",
             ],
-            capture_output=True,
-            encoding="utf-8",
+            **self.run_basearg,
         )
         run.assert_any_call(
             [
@@ -221,13 +216,11 @@ Target 1: iqn.def
                 "--password",
                 ANY,
             ],
-            capture_output=True,
-            encoding="utf-8",
+            **self.run_basearg,
         )
         run.assert_any_call(
             ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "account", "--op", "bind", "--tid", "2", "--user", ANY],
-            capture_output=True,
-            encoding="utf-8",
+            **self.run_basearg,
         )
         run.assert_any_call(
             [
@@ -244,13 +237,10 @@ Target 1: iqn.def
                 "--initiator-address",
                 "1.1.1.1/32",
             ],
-            capture_output=True,
-            encoding="utf-8",
+            **self.run_basearg,
         )
         run.assert_any_call(
-            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "portal", "--op", "show"],
-            capture_output=True,
-            encoding="utf-8",
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "portal", "--op", "show"], **self.run_basearg
         )
 
     @patch("subprocess.run")
@@ -329,9 +319,7 @@ Target 1: iqn.def
         self.assertEqual(200, res.status_code)
         self.assertEqual(8, run.call_count)
         run.assert_any_call(
-            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"],
-            capture_output=True,
-            encoding="utf-8",
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"], **self.run_basearg
         )
         run.assert_any_call(
             [
@@ -348,13 +336,11 @@ Target 1: iqn.def
                 "--user",
                 "user123",
             ],
-            capture_output=True,
-            encoding="utf-8",
+            **self.run_basearg,
         )
         run.assert_any_call(
             ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "account", "--op", "delete", "--user", "user123"],
-            capture_output=True,
-            encoding="utf-8",
+            **self.run_basearg,
         )
         run.assert_any_call(
             [
@@ -371,8 +357,7 @@ Target 1: iqn.def
                 "--initiator-address",
                 "0.0.0.0/0",
             ],
-            capture_output=True,
-            encoding="utf-8",
+            **self.run_basearg,
         )
         run.assert_any_call(
             [
@@ -389,8 +374,7 @@ Target 1: iqn.def
                 "--initiator-address",
                 "192.168.64.0/24",
             ],
-            capture_output=True,
-            encoding="utf-8",
+            **self.run_basearg,
         )
         run.assert_any_call(
             [
@@ -407,8 +391,7 @@ Target 1: iqn.def
                 "--lun",
                 "2",
             ],
-            capture_output=True,
-            encoding="utf-8",
+            **self.run_basearg,
         )
         run.assert_any_call(
             [
@@ -425,13 +408,10 @@ Target 1: iqn.def
                 "--lun",
                 "1",
             ],
-            capture_output=True,
-            encoding="utf-8",
+            **self.run_basearg,
         )
         run.assert_any_call(
-            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "delete", "--tid", "1"],
-            capture_output=True,
-            encoding="utf-8",
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "delete", "--tid", "1"], **self.run_basearg
         )
 
     @patch("subprocess.run")

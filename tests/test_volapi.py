@@ -6,6 +6,8 @@ from volexport.api import api
 
 
 class TestVolumeAPI(unittest.TestCase):
+    run_basearg = dict(capture_output=True, encoding="utf-8", timeout=10.0, stdin=-3, start_new_session=True)
+
     def test_healthcheck(self):
         res = TestClient(api).get("/health")
         self.assertEqual(200, res.status_code)
@@ -22,7 +24,7 @@ class TestVolumeAPI(unittest.TestCase):
         res = TestClient(api).get("/volume")
         self.assertEqual(500, res.status_code)
         self.assertEqual({"detail": ANY}, res.json())
-        run.assert_called_once_with(["sudo", "lvdisplay", "--unit", "b", "vg0"], capture_output=True, encoding="utf-8")
+        run.assert_called_once_with(["sudo", "lvdisplay", "--unit", "b", "vg0"], **self.run_basearg)
 
     lvdisplay = """
   --- Logical volume ---
@@ -71,7 +73,7 @@ class TestVolumeAPI(unittest.TestCase):
         res = TestClient(api).get("/volume")
         self.assertEqual(200, res.status_code)
         self.assertEqual(self.volume_info, res.json())
-        run.assert_called_once_with(["sudo", "lvdisplay", "--unit", "b", "vg0"], capture_output=True, encoding="utf-8")
+        run.assert_called_once_with(["sudo", "lvdisplay", "--unit", "b", "vg0"], **self.run_basearg)
 
     @patch("subprocess.run")
     def test_readvol(self, run):
@@ -80,7 +82,7 @@ class TestVolumeAPI(unittest.TestCase):
         res = TestClient(api).get("/volume/lv2")
         self.assertEqual(200, res.status_code)
         self.assertEqual(self.volume_info[1], res.json())
-        run.assert_called_once_with(["sudo", "lvdisplay", "--unit", "b", "vg0"], capture_output=True, encoding="utf-8")
+        run.assert_called_once_with(["sudo", "lvdisplay", "--unit", "b", "vg0"], **self.run_basearg)
 
     @patch("subprocess.run")
     def test_readvol_notfound(self, run):
@@ -89,7 +91,7 @@ class TestVolumeAPI(unittest.TestCase):
         res = TestClient(api).get("/volume/not-found")
         self.assertEqual(404, res.status_code)
         self.assertEqual({"detail": "volume not found"}, res.json())
-        run.assert_called_once_with(["sudo", "lvdisplay", "--unit", "b", "vg0"], capture_output=True, encoding="utf-8")
+        run.assert_called_once_with(["sudo", "lvdisplay", "--unit", "b", "vg0"], **self.run_basearg)
 
     @patch("subprocess.run")
     def test_createvol(self, run):
@@ -98,7 +100,7 @@ class TestVolumeAPI(unittest.TestCase):
         self.assertEqual(200, res.status_code)
         self.assertEqual({"name": "volname1", "size": 12345, "device": "/dev/vg0/volname1"}, res.json())
         run.assert_called_once_with(
-            ["sudo", "lvcreate", "--size", "12345b", "vg0", "--name", "volname1"], capture_output=True, encoding="utf-8"
+            ["sudo", "lvcreate", "--size", "12345b", "vg0", "--name", "volname1"], **self.run_basearg
         )
 
     @patch("subprocess.run")
@@ -107,7 +109,7 @@ class TestVolumeAPI(unittest.TestCase):
         res = TestClient(api).delete("/volume/volname1")
         self.assertEqual(200, res.status_code)
         self.assertEqual({}, res.json())
-        run.assert_called_once_with(["sudo", "lvremove", "vg0/volname1"], capture_output=True, encoding="utf-8")
+        run.assert_called_once_with(["sudo", "lvremove", "vg0/volname1"], **self.run_basearg)
 
     @patch("subprocess.run")
     def test_statsvol(self, run):
@@ -137,7 +139,7 @@ class TestVolumeAPI(unittest.TestCase):
         res = TestClient(api).get("/stats/volume")
         self.assertEqual(200, res.status_code)
         self.assertEqual({"free": 4194304, "total": 68178411520, "used": 68174217216, "volumes": 1}, res.json())
-        run.assert_called_once_with(["sudo", "vgdisplay", "--unit", "b", "vg0"], capture_output=True, encoding="utf-8")
+        run.assert_called_once_with(["sudo", "vgdisplay", "--unit", "b", "vg0"], **self.run_basearg)
 
     @patch("subprocess.run")
     def test_statsvol_notfound(self, run):
@@ -146,4 +148,4 @@ class TestVolumeAPI(unittest.TestCase):
         res = TestClient(api).get("/stats/volume")
         self.assertEqual(404, res.status_code)
         self.assertEqual({"detail": "pool not found"}, res.json())
-        run.assert_called_once_with(["sudo", "vgdisplay", "--unit", "b", "vg0"], capture_output=True, encoding="utf-8")
+        run.assert_called_once_with(["sudo", "vgdisplay", "--unit", "b", "vg0"], **self.run_basearg)
