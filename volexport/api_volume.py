@@ -25,12 +25,12 @@ class VolumeReadResponse(BaseModel):
     used: int
 
 
-
 class PoolStats(BaseModel):
     total: int
     used: int
     free: int
     volumes: int
+
 
 @router.get("/volume")
 def list_volume():
