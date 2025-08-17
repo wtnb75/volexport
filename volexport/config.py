@@ -18,6 +18,7 @@ class Config(BaseSettings):
     LVM_BIN: str | None = None
     NICS: list[str]
     IQN_BASE: str = "iqn.2025-08.com.github.wtnb75"
+    CMD_TIMEOUT: float = 10.0
 
 
 config = Config()  # type: ignore

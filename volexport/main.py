@@ -52,6 +52,7 @@ def verbose_option(func):
 @click.option("--host", default="127.0.0.1", help="listen host")
 @click.option("--port", default=8080, type=int, help="listen port")
 @click.option("--log-config", type=click.Path(), help="uvicorn log config")
+@click.option("--cmd-timeout", type=float, help="command execution timeout")
 def server(host, port, log_config, **kwargs):
     import json
 

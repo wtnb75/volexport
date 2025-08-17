@@ -247,7 +247,7 @@ class Tgtd:
             )
         return res
 
-    def export_volume(self, filename: str, acl: list[str]):
+    def export_volume(self, filename: str, acl: list[str], readonly: bool = False):
         assert Path(filename).exists()
         iqname = secrets.token_hex(10)
         tgts = [x.removeprefix("Target ") for x in self.target_list().keys() if x.startswith("Target ")]
@@ -265,6 +265,8 @@ class Tgtd:
             opts["bsopts"] = config.TGT_BSOPTS
         if config.TGT_BSOFLAGS:
             opts["bsoflags"] = config.TGT_BSOFLAGS
+        if readonly:
+            opts["params"] = dict(readonly=1)
         self.lun_create(tid=tid, lun=lun, path=filename, bstype=config.TGT_BSTYPE, **opts)
         self.account_create(user=user, password=passwd)
         self.account_bind(tid=tid, user=user)

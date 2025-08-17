@@ -38,3 +38,10 @@ tasks:
       PYTHONPATH: "{{.TASK_DIR}}"
     cmds:
       - pytest -xs --ff
+
+  apispec:
+    desc: generate api spec
+    vars:
+      OUTPUT: "volexport-api.yaml"
+    cmds:
+      - "python -m volexport.main apispec --format yaml > {{.OUTPUT}}"
