@@ -35,6 +35,12 @@ def commanderror(request: Request, exc: SubprocessError):
     return JSONResponse(status_code=500, content=dict(detail="internal error"))
 
 
+@api.exception_handler(TypeError)
+def typeerror(request: Request, exc: TypeError):
+    _log.info("internal error: request=%s %s", request.method, request.url.path, exc_info=exc)
+    return JSONResponse(status_code=500, content=dict(detail="internal error"))
+
+
 @api.get("/health")
 def health():
     return {"status": "OK"}

@@ -156,6 +156,11 @@ class LV(Base):
         super().__init__(name)
         self.vgname = vgname
 
+    @property
+    def volname(self):
+        assert self.name is not None
+        return self.vgname + "/" + self.name
+
     @override
     def get(self) -> dict | None:
         if self.name is None:
@@ -189,8 +194,7 @@ class LV(Base):
 
     @override
     def delete(self) -> None:
-        assert self.name is not None
-        runcmd(["lvremove", self.vgname + "/" + self.name])
+        runcmd(["lvremove", self.volname])
 
     @override
     def scan(self) -> list[dict]:
@@ -227,3 +231,13 @@ class LV(Base):
         if not name.startswith(f"/dev/{self.vgname}/"):
             raise Exception(f"invalid format: {name}, vg={self.vgname}")
         return name.removeprefix(f"/dev/{self.vgname}/")
+
+    def read_only(self, readonly: bool):
+        if readonly:
+            runcmd(["lvchange", "--permission", "r", self.volname])
+        else:
+            runcmd(["lvchange", "--permission", "rw", self.volname])
+
+    def resize(self, newsize: int):
+        assert self.name is not None
+        runcmd(["lvresize", "--size", str(newsize), self.volname])

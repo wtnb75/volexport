@@ -211,6 +211,8 @@ class Tgtd:
     def export_list(self):
         res = []
         for tgtid, tgtinfo in self.target_list().items():
+            if tgtinfo is None:
+                continue
             tgtid = tgtid.removeprefix("Target ")
             name = tgtinfo["name"]
             itn = tgtinfo.get("I_T nexus information", {})

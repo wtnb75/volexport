@@ -34,11 +34,14 @@ jobs:
       with:
         output-dir: docs
         module: volexport
+    - name: install node
+      uses: actions/setup-node@v4
     - name: api spec
       shell: bash
       run: |
         mkdir -p api
         PYTHONPATH=. python -m volexport.main apispec --format yaml > api/api-spec.yaml
+        npx @redocly/cli@latest build-docs api/api-spec.yaml -o api/index.html
     - uses: wtnb75/actions/merge-pages@main
       with:
         dirs: "cover docs api"
