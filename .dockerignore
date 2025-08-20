@@ -2,3 +2,4 @@
 !volexport
 !requirements*.txt
 !setup.*
+!entrypoint.sh

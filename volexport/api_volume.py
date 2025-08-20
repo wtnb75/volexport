@@ -25,6 +25,11 @@ class VolumeReadResponse(BaseModel):
     used: int
 
 
+class VolumeUpdateRequest(BaseModel):
+    size: int | None = None
+    readonly: bool | None = None
+
+
 class PoolStats(BaseModel):
     total: int
     used: int
@@ -54,6 +59,15 @@ def read_volume(name):
 def delete_volume(name) -> dict:
     LV(config.VG, name).delete()
     return {}
+
+
+@router.post("/volume/{name}")
+def update_volume(name, arg: VolumeUpdateRequest) -> VolumeReadResponse:
+    if arg.readonly is not None:
+        LV(config.VG, name).read_only(arg.readonly)
+    if arg.size is not None:
+        LV(config.VG, name).resize(arg.size)
+    return VolumeReadResponse.model_validate(LV(config.VG, name).volume_read())
 
 
 @router.get("/stats/volume")
