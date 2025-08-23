@@ -10,6 +10,7 @@ _log = getLogger(__name__)
 
 
 def parse(input: Sequence[str], indent: int, width: int) -> list[dict]:
+    """Parse LVM command output"""
     res = []
     ent = {}
     for i in input:
@@ -41,6 +42,7 @@ def parse(input: Sequence[str], indent: int, width: int) -> list[dict]:
 
 
 def runparse(cmd: list[str], indent: int, width: int) -> list[dict]:
+    """Run LVM command and parse the output"""
     if config.LVM_BIN:
         cmd[0:0] = shlex.split(config.LVM_BIN)
     res = runcmd(cmd, root=True)
@@ -52,6 +54,7 @@ class Base:
         self.name = name
 
     def find_by(self, data: list[dict], keyname: str, value: str):
+        """Find an entry in a list of dictionaries by key and value"""
         for i in data:
             if i.get(keyname) == value:
                 return i
@@ -59,26 +62,33 @@ class Base:
 
     @abstractmethod
     def get(self) -> dict | None:
+        """Get a single entry by name"""
         raise NotImplementedError("get")
 
     @abstractmethod
     def getlist(self) -> list[dict]:
+        """Get a list of entries"""
         raise NotImplementedError("list")
 
     @abstractmethod
     def create(self) -> dict:
+        """Create a new entry"""
         raise NotImplementedError("create")
 
     @abstractmethod
     def delete(self) -> None:
+        """Delete an entry"""
         raise NotImplementedError("delete")
 
     @abstractmethod
     def scan(self) -> list[dict]:
+        """Scan for entries"""
         raise NotImplementedError("scan")
 
 
 class PV(Base):
+    """Class to manage physical volumes in LVM"""
+
     @override
     def get(self) -> dict | None:
         if self.name is None:
@@ -109,6 +119,8 @@ class PV(Base):
 
 
 class VG(Base):
+    """Class to manage volume groups in LVM"""
+
     @override
     def get(self) -> dict | None:
         if self.name is None:
@@ -141,17 +153,21 @@ class VG(Base):
         return self.getlist()
 
     def addpv(self, pv: PV):
+        """Add a physical volume to the volume group"""
         assert self.name is not None
         assert pv.name is not None
         runcmd(["vgextend", self.name, pv.name], True)
 
     def delpv(self, pv: PV):
+        """Remove a physical volume from the volume group"""
         assert self.name is not None
         assert pv.name is not None
         runcmd(["vgreduce", self.name, pv.name], True)
 
 
 class LV(Base):
+    """Class to manage logical volumes in LVM"""
+
     def __init__(self, vgname: str, name: str | None = None):
         super().__init__(name)
         self.vgname = vgname
@@ -178,16 +194,19 @@ class LV(Base):
         return dict(name=self.name, size=size, device=f"/dev/{self.vgname}/{self.name}")
 
     def create_snapshot(self, size: int, parent: str) -> dict:
+        """Create a snapshot of a logical volume"""
         assert self.name is not None
         runcmd(["lvcreate", "--snapshot", "--size", f"{size}b", "--name", self.name, f"/dev/{self.vgname}/{parent}"])
         return dict(name=self.name, size=size, device=f"/dev/{self.vgname}/{self.name}")
 
     def create_thinpool(self, size: int) -> dict:
+        """Create a thin pool logical volume"""
         assert self.name is not None
         runcmd(["lvcreate", "--thinpool", self.name, "-L", f"{size}b", self.vgname])
         return dict(name=self.name, size=size, device=f"/dev/{self.vgname}/{self.name}")
 
     def create_thin(self, size: int, thinpool: str) -> dict:
+        """Create a thin logical volume in a thin pool"""
         assert self.name is not None
         runcmd(["lvcreate", "--thin", "-V", f"{size}b", "-n", self.name, f"{self.vgname}/{thinpool}"])
         return dict(name=self.name, size=size, device=f"/dev/{self.vgname}/{self.name}")
@@ -202,6 +221,7 @@ class LV(Base):
         return self.getlist()
 
     def volume_list(self):
+        """List all logical volumes in the volume group"""
         vols = self.getlist()
         res = []
         for vol in vols:
@@ -213,6 +233,7 @@ class LV(Base):
         return res
 
     def volume_read(self):
+        """Read details of a specific logical volume"""
         vols = self.getlist()
         for vol in vols:
             if vol["LV Name"] != self.name:
@@ -225,19 +246,23 @@ class LV(Base):
         return None
 
     def volume_vol2path(self):
+        """Convert volume name to device path"""
         return f"/dev/{self.vgname}/{self.name}"
 
     def volume_path2vol(self, name: str):
+        """Convert device path to volume name"""
         if not name.startswith(f"/dev/{self.vgname}/"):
             raise Exception(f"invalid format: {name}, vg={self.vgname}")
         return name.removeprefix(f"/dev/{self.vgname}/")
 
     def read_only(self, readonly: bool):
+        """Set the logical volume to read-only or read-write"""
         if readonly:
             runcmd(["lvchange", "--permission", "r", self.volname])
         else:
             runcmd(["lvchange", "--permission", "rw", self.volname])
 
     def resize(self, newsize: int):
+        """Resize the logical volume to a new size in bytes"""
         assert self.name is not None
         runcmd(["lvresize", "--size", str(newsize), self.volname])

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from .config import config
 from .tgtd import Tgtd
 from .lvm2 import LV
@@ -8,41 +8,41 @@ router = APIRouter()
 
 
 class ExportRequest(BaseModel):
-    volname: str
-    acl: list[str]
-    readonly: bool = False
+    volname: str = Field(description="Volume name to export", examples=["volume1"])
+    acl: list[str] = Field(description="Source IP Addresses to allow access")
+    readonly: bool = Field(default=False, description="read-only if true", examples=[True, False])
 
 
 class ExportResponse(BaseModel):
-    protocol: str
-    addresses: list[str]
-    targetname: str
-    tid: int
-    user: str
-    passwd: str
-    lun: int
-    acl: list[str]
+    protocol: str = Field(description="access protocol", examples=["iscsi"])
+    addresses: list[str] = Field(description="IP addresses of the target")
+    targetname: str = Field(description="target name", examples=["iqn.2025-08.volexport:abcde"])
+    tid: int = Field(description="target ID")
+    user: str = Field(description="user name for access", examples=["admin"])
+    passwd: str = Field(description="password for access", examples=["password123"])
+    lun: int = Field(description="LUN number", examples=[1, 2, 3])
+    acl: list[str] = Field(description="Access Control List (ACL) for the export")
 
 
 class ClientInfo(BaseModel):
-    address: list[str]
-    initiator: str
+    address: list[str] = Field(description="IP addresses of the client")
+    initiator: str = Field(description="Initiator name", examples=["iqn.2025-08.volimport:client1"])
 
 
 class ExportReadResponse(BaseModel):
-    protocol: str
-    connected: list[ClientInfo]
-    targetname: str
-    tid: int
-    volumes: list[str]
-    users: list[str]
-    acl: list[str]
+    protocol: str = Field(description="access protocol", examples=["iscsi"])
+    connected: list[ClientInfo] = Field(description="List of connected clients")
+    targetname: str = Field(description="target name", examples=["iqn.2025-08.volexport:abcde"])
+    tid: int = Field(description="target ID")
+    volumes: list[str] = Field(description="List of volumes exported", examples=["volume1"])
+    users: list[str] = Field(description="List of users with access", examples=["admin", "user1"])
+    acl: list[str] = Field(description="Access Control List (ACL) for the export")
 
 
 class ExportStats(BaseModel):
-    targets: int
-    clients: int
-    volumes: int
+    targets: int = Field(description="Number of export targets", examples=[5])
+    clients: int = Field(description="Number of connected clients", examples=[10])
+    volumes: int = Field(description="Number of volumes exported", examples=[15])
 
 
 def _fixpath(data: dict) -> dict:
@@ -51,18 +51,18 @@ def _fixpath(data: dict) -> dict:
     return data
 
 
-@router.get("/export")
+@router.get("/export", description="List all exports")
 def list_export() -> list[ExportReadResponse]:
     return [ExportReadResponse.model_validate(_fixpath(x)) for x in Tgtd().export_list()]
 
 
-@router.post("/export")
+@router.post("/export", description="Create a new export")
 def create_export(arg: ExportRequest) -> ExportResponse:
     filename = LV(config.VG, arg.volname).volume_vol2path()
     return ExportResponse.model_validate(Tgtd().export_volume(filename=filename, acl=arg.acl, readonly=arg.readonly))
 
 
-@router.get("/export/{name}")
+@router.get("/export/{name}", description="Read export details by name or TID")
 def read_export(name) -> ExportReadResponse:
     res = [_fixpath(x) for x in Tgtd().export_list() if x["targetname"] == name or x["tid"] == name]
     if len(res) == 0:
@@ -70,17 +70,17 @@ def read_export(name) -> ExportReadResponse:
     return ExportReadResponse.model_validate(res[0])
 
 
-@router.delete("/export/{name}")
+@router.delete("/export/{name}", description="Delete an export by name or TID")
 def delete_export(name, force: bool = False):
     return Tgtd().unexport_volume(targetname=name, force=force)
 
 
-@router.get("/address")
+@router.get("/address", description="Get addresses of the target")
 def get_address() -> list[str]:
     return Tgtd().myaddress()
 
 
-@router.get("/stats/export")
+@router.get("/stats/export", description="Get statistics of exports")
 def stats_export() -> ExportStats:
     info = Tgtd().export_list()
     return ExportStats(
