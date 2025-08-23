@@ -10,3 +10,4 @@ cover
 .coverage
 build/
 /api/
+/pkg/

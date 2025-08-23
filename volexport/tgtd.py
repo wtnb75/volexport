@@ -13,10 +13,14 @@ _log = getLogger(__name__)
 
 
 class Tgtd:
+    """Class to manage tgtadm operations for stgt"""
+
     def __init__(self):
         self.lld = "iscsi"
 
     def parse(self, lines: Sequence[str]):
+        """Parse the output of tgtadm"""
+
         def linegen(lines: Sequence[str]):
             for line in lines:
                 indent = len(line) - len(line.lstrip())
@@ -67,6 +71,7 @@ class Tgtd:
         return res
 
     def tgtadm(self, **kwargs):
+        """Run tgtadm command with given parameters"""
         cmd = shlex.split(config.TGTADM_BIN)
         for k, v in kwargs.items():
             if len(k) == 1:
@@ -81,81 +86,105 @@ class Tgtd:
         return runcmd(cmd, True)
 
     def target_create(self, tid: int, name: str):
+        """Create a new target with the given TID and name"""
         return self.tgtadm(lld=self.lld, mode="target", op="new", tid=tid, targetname=name)
 
     def target_delete(self, tid: int, force: bool = False):
+        """Delete a target by TID"""
         if force:
             return self.tgtadm(lld=self.lld, mode="target", op="delete", force=None, tid=tid)
         return self.tgtadm(lld=self.lld, mode="target", op="delete", tid=tid)
 
     def target_list(self):
+        """List all targets"""
         return self.parse(self.tgtadm(lld=self.lld, mode="target", op="show").stdout.splitlines())
 
     def target_show(self, tid: int):
+        """Show details of a target by TID"""
         return self.parse(self.tgtadm(lld=self.lld, mode="target", op="show", tid=tid).stdout.splitlines())
 
     def target_update(self, tid: int, param, value):
+        """Update a target parameter by TID"""
         return self.tgtadm(lld=self.lld, mode="target", op="update", tid=tid, name=param, value=value)
 
     def target_bind_address(self, tid: int, addr):
+        """Bind a target to an initiator address"""
         return self.tgtadm(lld=self.lld, mode="target", op="bind", tid=tid, initiator_address=addr)
 
     def target_bind_name(self, tid: int, name):
+        """Bind a target to an initiator name"""
         return self.tgtadm(lld=self.lld, mode="target", op="bind", tid=tid, initiator_name=name)
 
     def target_unbind_address(self, tid: int, addr):
+        """Unbind a target from an initiator address"""
         return self.tgtadm(lld=self.lld, mode="target", op="unbind", tid=tid, initiator_address=addr)
 
     def target_unbind_name(self, tid: int, name):
+        """Unbind a target from an initiator name"""
         return self.tgtadm(lld=self.lld, mode="target", op="unbind", tid=tid, initiator_name=name)
 
     def lun_create(self, tid: int, lun: int, path: str, **kwargs):
+        """Create a new logical unit (LUN) for a target"""
         return self.tgtadm(lld=self.lld, mode="logicalunit", op="new", tid=tid, lun=lun, backing_store=path, **kwargs)
 
     def lun_update(self, tid: int, lun: int, **kwargs):
+        """Update an existing logical unit (LUN) for a target"""
         return self.tgtadm(lld=self.lld, mode="logicalunit", op="update", tid=tid, lun=lun, params=kwargs)
 
     def lun_delete(self, tid: int, lun: int):
+        """Delete a logical unit (LUN) from a target"""
         return self.tgtadm(lld=self.lld, mode="logicalunit", op="delete", tid=tid, lun=lun)
 
     def account_create(self, user: str, password: str, outgoing: bool = False):
+        """Create a new account for a target"""
         if outgoing:
             return self.tgtadm(lld=self.lld, mode="account", op="new", user=user, password=password, outgoing=None)
         return self.tgtadm(lld=self.lld, mode="account", op="new", user=user, password=password)
 
     def account_list(self):
+        """List all accounts for the target"""
         return self.parse(self.tgtadm(lld=self.lld, mode="account", op="show").stdout.splitlines())
 
     def account_delete(self, user: str, outgoing: bool = False):
+        """Delete an account from the target"""
         if outgoing:
             return self.tgtadm(lld=self.lld, mode="account", op="delete", user=user, outgoing=None)
         return self.tgtadm(lld=self.lld, mode="account", op="delete", user=user)
 
     def account_bind(self, tid: int, user: str):
+        """Bind an account to a target"""
         return self.tgtadm(lld=self.lld, mode="account", op="bind", tid=tid, user=user)
 
     def account_unbind(self, tid: int, user: str):
+        """Unbind an account from a target"""
         return self.tgtadm(lld=self.lld, mode="account", op="unbind", tid=tid, user=user)
 
     def lld_start(self):
+        """Start the LLD"""
         return self.tgtadm(lld=self.lld, mode="lld", op="start")
 
     def lld_stop(self):
+        """Stop the LLD"""
         return self.tgtadm(lld=self.lld, mode="lld", op="stop")
 
     def sys_show(self):
+        """Get system information"""
         return self.parse(self.tgtadm(mode="sys", op="show").stdout.splitlines())
 
     def sys_set(self, name, value):
+        """Set a system parameter"""
         return self.tgtadm(mode="sys", op="update", name=name, value=value)
 
     def sys_ready(self):
+        """Set the system state to ready"""
         return self.tgtadm(mode="sys", op="update", name="State", value="ready")
 
     def sys_offline(self):
+        """Set the system state to offline"""
         return self.tgtadm(mode="sys", op="update", name="State", value="offline")
 
     def portal_list(self):
+        """List all portals"""
         return [
             x.split(":", 1)[-1].strip()
             for x in self.tgtadm(lld=self.lld, mode="portal", op="show").stdout.splitlines()
@@ -163,18 +192,23 @@ class Tgtd:
         ]
 
     def portal_add(self, hostport):
+        """Add a new portal"""
         return self.tgtadm(lld=self.lld, mode="portal", op="new", param=dict(portal=hostport))
 
     def portal_delete(self, hostport):
+        """Delete a portal"""
         return self.tgtadm(lld=self.lld, mode="portal", op="delete", param=dict(portal=hostport))
 
     def list_session(self, tid: int):
+        """List all sessions for a target"""
         return self.parse(self.tgtadm(lld=self.lld, mode="conn", op="show", tid=tid).stdout.splitlines())
 
     def disconnect_session(self, tid: int, sid: int, cid: int):
+        """Disconnect a session by TID, SID, and CID"""
         return self.tgtadm(lld=self.lld, mode="conn", op="delete", tid=tid, sid=sid, cid=cid)
 
     def myaddress(self):
+        """Get the addresses of the target"""
         portal_addrs = [x.removesuffix(",1") for x in self.portal_list()]
         res = []
         ifaddrs = {AF_INET: [], AF_INET6: []}
@@ -209,6 +243,7 @@ class Tgtd:
 
     # compound operation
     def export_list(self):
+        """List all exports"""
         res = []
         for tgtid, tgtinfo in self.target_list().items():
             if tgtinfo is None:
@@ -250,6 +285,7 @@ class Tgtd:
         return res
 
     def export_volume(self, filename: str, acl: list[str], readonly: bool = False):
+        """Export a volume by its filename with specified ACL and read-only option"""
         assert Path(filename).exists()
         iqname = secrets.token_hex(10)
         tgts = [x.removeprefix("Target ") for x in self.target_list().keys() if x.startswith("Target ")]
@@ -287,18 +323,21 @@ class Tgtd:
         )
 
     def get_export_bypath(self, filename: str):
+        """Get export details by volume path"""
         res = self.export_list()
         for tgt in res:
             if filename in tgt.get("volumes"):
                 return tgt
 
     def get_export_byname(self, targetname: str):
+        """Get export details by target name"""
         res = self.export_list()
         for tgt in res:
             if targetname == tgt.get("targetname"):
                 return tgt
 
     def unexport_volume(self, targetname: str, force: bool = False):
+        """Unexport a volume by target name"""
         info = self.target_list()
         for tgtidstr, data in info.items():
             if data.get("name") != targetname:

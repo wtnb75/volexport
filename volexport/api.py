@@ -41,6 +41,6 @@ def typeerror(request: Request, exc: TypeError):
     return JSONResponse(status_code=500, content=dict(detail="internal error"))
 
 
-@api.get("/health")
+@api.get("/health", description="Health check endpoint")
 def health():
     return {"status": "OK"}

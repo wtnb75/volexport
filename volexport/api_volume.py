@@ -1,6 +1,6 @@
 import datetime
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from .config import config
 from .lvm2 import LV, VG
 
@@ -8,46 +8,46 @@ router = APIRouter()
 
 
 class VolumeCreateRequest(BaseModel):
-    name: str
-    size: int
+    name: str = Field(description="Name of the volume to create", examples=["volume1"])
+    size: int = Field(description="Size of the volume in bytes", examples=[1073741824])
 
 
 class VolumeCreateResponse(BaseModel):
-    name: str
-    size: int
-    device: str
+    name: str = Field(description="Name of the created volume", examples=["volume1"])
+    size: int = Field(description="Size of the created volume in bytes", examples=[1073741824])
+    device: str = Field(description="Device path of the created volume", examples=["/dev/vg/volume1"])
 
 
 class VolumeReadResponse(BaseModel):
-    name: str
-    created: datetime.datetime
-    size: int
-    used: int
+    name: str = Field(description="Name of the volume", examples=["volume1"])
+    created: datetime.datetime = Field(description="Creation timestamp of the volume", examples=["2023-10-01T12:00:00"])
+    size: int = Field(description="Size of the volume in bytes", examples=[1073741824])
+    used: int = Field(description="in-use count", examples=[0, 1])
 
 
 class VolumeUpdateRequest(BaseModel):
-    size: int | None = None
-    readonly: bool | None = None
+    size: int | None = Field(default=None, description="New size of the volume in bytes", examples=[2147483648])
+    readonly: bool | None = Field(default=None, description="Set volume to read-only if true", examples=[True, False])
 
 
 class PoolStats(BaseModel):
-    total: int
-    used: int
-    free: int
-    volumes: int
+    total: int = Field(description="Total size of the pool in bytes", examples=[10737418240])
+    used: int = Field(description="Used size of the pool in bytes", examples=[5368709120])
+    free: int = Field(description="Free size of the pool in bytes", examples=[5368709120])
+    volumes: int = Field(description="Number of volumes in the pool", examples=[10])
 
 
-@router.get("/volume")
+@router.get("/volume", description="List all volumes")
 def list_volume():
     return [VolumeReadResponse.model_validate(x) for x in LV(config.VG).volume_list()]
 
 
-@router.post("/volume")
+@router.post("/volume", description="Create a new volume")
 def create_volume(arg: VolumeCreateRequest):
     return VolumeCreateResponse.model_validate(LV(config.VG, arg.name).create(size=arg.size))
 
 
-@router.get("/volume/{name}")
+@router.get("/volume/{name}", description="Read volume details by name")
 def read_volume(name):
     res = LV(config.VG, name).volume_read()
     if res is None:
@@ -55,13 +55,13 @@ def read_volume(name):
     return VolumeReadResponse.model_validate(res)
 
 
-@router.delete("/volume/{name}")
+@router.delete("/volume/{name}", description="Delete a volume by name")
 def delete_volume(name) -> dict:
     LV(config.VG, name).delete()
     return {}
 
 
-@router.post("/volume/{name}")
+@router.post("/volume/{name}", description="Update a volume by name")
 def update_volume(name, arg: VolumeUpdateRequest) -> VolumeReadResponse:
     if arg.readonly is not None:
         LV(config.VG, name).read_only(arg.readonly)
@@ -70,7 +70,7 @@ def update_volume(name, arg: VolumeUpdateRequest) -> VolumeReadResponse:
     return VolumeReadResponse.model_validate(LV(config.VG, name).volume_read())
 
 
-@router.get("/stats/volume")
+@router.get("/stats/volume", description="Get statistics of the volume pool")
 def stats_volume() -> PoolStats:
     info = VG(config.VG).get()
     if info is None:

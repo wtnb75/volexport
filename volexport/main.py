@@ -35,7 +35,7 @@ def verbose_option(func):
         set_verbose(verbose)
         return func(*args, **kwargs)
 
-    return click.option("--verbose/--quiet", help="log level")(wrap)
+    return click.option("--verbose/--quiet", default=None, help="log level")(wrap)
 
 
 @cli.command()
@@ -54,6 +54,7 @@ def verbose_option(func):
 @click.option("--log-config", type=click.Path(), help="uvicorn log config")
 @click.option("--cmd-timeout", type=float, help="command execution timeout")
 def server(host, port, log_config, **kwargs):
+    """Run the volexport server."""
     import json
 
     for k, v in kwargs.items():
@@ -79,6 +80,7 @@ def server(host, port, log_config, **kwargs):
 @cli.command()
 @click.option("--format", type=click.Choice(["yaml", "json"]), default="yaml", show_default=True)
 def apispec(format):
+    """Generate OpenAPI specification for the volexport API."""
     import sys
 
     os.environ["VOLEXP_VG"] = "dummy"

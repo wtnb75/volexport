@@ -7,6 +7,7 @@ _log = getLogger(__name__)
 
 
 def runcmd(cmd: list[str], root: bool = True):
+    """Run a command"""
     _log.info("run %s, root=%s", cmd, root)
     if root:
         if config.BECOME_METHOD == "su":
