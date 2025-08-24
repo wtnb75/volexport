@@ -1,9 +1,18 @@
 import unittest
+import subprocess
+from unittest.mock import patch, ANY
 from volexport import tgtd
 
 
 class TestTgtd(unittest.TestCase):
     maxDiff = None
+    default_exec = dict(
+        capture_output=True,
+        encoding="utf-8",
+        timeout=10.0,
+        stdin=subprocess.DEVNULL,
+        start_new_session=True,
+    )
 
     def test_parse_sys(self):
         testdata_sys = """
@@ -269,3 +278,19 @@ Target 1: iqn.def
         t = tgtd.Tgtd()
         res = t.parse(testdata_target.splitlines())
         self.assertEqual(expected, res)
+
+    @patch("subprocess.run")
+    def test_dump(self, run):
+        run.return_value.stdout = "dummy text"
+        t = tgtd.Tgtd()
+        data = t.dump()
+        self.assertEqual("dummy text", data)
+        run.assert_called_once_with(["sudo", "tgt-admin", "--dump"], **self.default_exec)
+
+    @patch("subprocess.run")
+    def test_restore(self, run):
+        run.return_value.stdout = ""
+        t = tgtd.Tgtd()
+        data = t.restore("dummy text")
+        self.assertEqual("", data)
+        run.assert_called_once_with(["sudo", "tgt-admin", "-c", ANY, "-e"], **self.default_exec)

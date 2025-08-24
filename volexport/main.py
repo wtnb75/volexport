@@ -53,9 +53,12 @@ def verbose_option(func):
 @click.option("--port", default=8080, type=int, help="listen port")
 @click.option("--log-config", type=click.Path(), help="uvicorn log config")
 @click.option("--cmd-timeout", type=float, help="command execution timeout")
-def server(host, port, log_config, **kwargs):
+@click.option("--check/--skip-check", default=True, help="pre-boot check")
+def server(host, port, log_config, check, **kwargs):
     """Run the volexport server."""
     import json
+    from .lvm2 import VG
+    from .tgtd import Tgtd
 
     for k, v in kwargs.items():
         if k is None or v is None or (isinstance(v, tuple) and len(v) == 0):
@@ -74,6 +77,12 @@ def server(host, port, log_config, **kwargs):
     if log_config is None:
         getLogger("uvicorn").setLevel("INFO")
 
+    # pre-boot check
+    if check:
+        assert VG(config.VG).get() is not None
+        assert Tgtd().sys_show() is not None
+
+    # start server
     uvicorn.run(api, host=host, port=port, log_config=log_config)
 
 
