@@ -3,6 +3,7 @@ from socket import AF_INET6, AF_INET
 import shlex
 import secrets
 import ifaddr
+import tempfile
 from pathlib import Path
 from logging import getLogger
 from typing import Sequence
@@ -240,6 +241,20 @@ class Tgtd:
                 # all v6 addr
                 res.extend([f"[{x}]:{port}" for x in ifaddrs[AF_INET6] if "%" not in x])
         return res
+
+    # tgt-admin operations
+    def dump(self):
+        """Dump the current configuration"""
+        res = runcmd(["tgt-admin", "--dump"], root=True)
+        return res.stdout
+
+    def restore(self, data: str):
+        """Restore configuration from the given data"""
+        with tempfile.NamedTemporaryFile("r+") as tf:
+            tf.write(data)
+            tf.flush()
+            res = runcmd(["tgt-admin", "-c", tf.name, "-e"], root=True)
+            return res.stdout
 
     # compound operation
     def export_list(self):
