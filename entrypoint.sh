@@ -1,5 +1,5 @@
 #! /bin/sh
 
 tgtd -f &
-volexport server &
+volexport server $* &
 wait

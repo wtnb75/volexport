@@ -10,4 +10,6 @@ COPY --from=build /app/dist/*.whl /dist/
 ADD --chmod=755 entrypoint.sh /
 RUN --mount=type=cache,target=/root/.cache pip install --no-compile /dist/*.whl
 ENTRYPOINT ["tini", "--"]
+EXPOSE 3260
+EXPOSE 8080
 CMD ["/entrypoint.sh"]
