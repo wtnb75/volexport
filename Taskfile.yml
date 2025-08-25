@@ -39,9 +39,77 @@ tasks:
     cmds:
       - pytest -xs --ff
 
+  codegen:go:
+    desc: generate go client code
+    vars:
+      TMPFILE:
+        sh: mktemp
+    cmds:
+      - defer: "rm -f {{.TMPFILE}}"
+      - "python -m volexport.main apispec --format yaml > {{.TMPFILE}}"
+      - "mkdir -p go"
+      - "openapi-generator generate -i {{.TMPFILE}} -g go -o go"
+
+  codegen:go2:
+    desc: generate go client code
+    vars:
+      TMPFILE:
+        sh: mktemp
+    cmds:
+      - defer: "rm -f {{.TMPFILE}}"
+      - "python -m volexport.main apispec --format yaml > {{.TMPFILE}}"
+      - "mkdir -p go"
+      - "~/go/bin/oapi-codegen -generate types,client -o go/api_client.go -package client {{.TMPFILE}}"
+
   apispec:
     desc: generate api spec
     vars:
       OUTPUT: "volexport-api.yaml"
     cmds:
       - "python -m volexport.main apispec --format yaml > {{.OUTPUT}}"
+
+  vm:create:disk:
+    desc: create disk for VM test environment
+    cmds:
+      - "limactl disk create vol1 --size 250G"
+
+  vm:delete:disk:
+    desc: delete disk for VM test environment
+    cmds:
+      - "limactl disk delete vol1"
+
+  vm:create:
+    desc: create VMs
+    cmds:
+      - "limactl create lima/server.yaml -y"
+      - "limactl create lima/client.yaml -y"
+
+  vm:start:
+    desc: start VMs
+    cmds:
+      - "limactl start server"
+      - "limactl start client"
+
+  vm:prepare:
+    desc: prepare server
+    cmds:
+      - "limactl shell server /tmp/venv/bin/pip install -r requirements.txt"
+      - "limactl shell server sudo pvcreate /dev/vdb"
+      - "limactl shell server sudo vgcreate vg0 /dev/vdb"
+
+  vm:server:boot:
+    desc: boot volexport server
+    cmds:
+      - "limactl shell server -- /tmp/venv/bin/python -m volexport.main server --vg vg0 --nics eth0 --host 0.0.0.0 --verbose"
+
+  vm:stop:
+    desc: stop VMs
+    cmds:
+      - "limactl stop server"
+      - "limactl stop client"
+
+  vm:delete:
+    desc: delete VMs
+    cmds:
+      - "limactl delete server"
+      - "limactl delete client"

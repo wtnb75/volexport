@@ -59,29 +59,29 @@ create volume and mount
 - create volume (name=vol123, size=100GB)
     - `curl --json $(jo name=vol123 size=107374182400) ${endpoint}/volume`
 - export volume
-    - `curl --json $(jo volname=vol123 acl=$(jo -a 192.168.1.0/24)) ${endpoint}/export`
+    - `curl --json $(jo volname=vol123 acl=$(jo -a 192.168.104.0/24)) ${endpoint}/export`
     - ```json
       {
         "protocol": "iscsi",
         "addresses": [
-            "192.168.1.15:3260"
+            "192.168.104.1:3260"
         ],
         "targetname": "iqn.2025-08.com.github.wtnb75:6688f7a2585ef52a139b",
         "tid": 1,
-        "user": "8f83941a93ae81afe7ab",
-        "passwd": "60e9eee2c9e3747f697a68bb5feb1cb37c55ef25",
+        "user": "user123",
+        "passwd": "passwd123",
         "lun": 1,
         "acl": [
-            "192.168.1.0/24"
+            "192.168.104.0/24"
         ]
       }
       ```
     - `target=iqn.2025-08.com.github.wtnb75:6688f7a2585ef52a139b`
 - attach
-    - `iscsiadm -m discovery -t st -p 192.168.1.15`
+    - `iscsiadm -m discovery -t st -p 192.168.104.1:3260`
     - `iscsiadm -m node -T ${target} -o update -n node.session.auth.authmethod -v CHAP`
     - `iscsiadm -m node -T ${target} -o update -n node.session.auth.username -v user123`
-    - `iscsiadm -m node -T ${target} -o update -n node.session.auth.password -v password123`
+    - `iscsiadm -m node -T ${target} -o update -n node.session.auth.password -v passwd123`
     - `iscsiadm -m node -T ${target} -l`
     - `iscsiadm -m session -P 3`
         - view device name
@@ -120,7 +120,7 @@ umount and detach
 - detach
     - `iscsiadm -m node -T ${target} -u`
 - remove discovery
-    - `iscsiadm -m discoverydb -t st -p 192.168.1.10 --op delete`
+    - `iscsiadm -m discoverydb -t st -p 192.168.104.1:3260 --op delete`
 
 unexport and delete volume
 
