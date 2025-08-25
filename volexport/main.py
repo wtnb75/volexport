@@ -49,10 +49,10 @@ def verbose_option(func):
 @click.option("--nics", multiple=True, help="use interfaces")
 @click.option("--iqn-base", help="iSCSI target basename")
 @click.option("--vg", help="LVM volume group")
-@click.option("--host", default="127.0.0.1", help="listen host")
-@click.option("--port", default=8080, type=int, help="listen port")
+@click.option("--host", default="127.0.0.1", envvar="VOLEXP_HOST", help="listen host")
+@click.option("--port", default=8080, type=int, envvar="VOLEXP_PORT", help="listen port")
 @click.option("--log-config", type=click.Path(), help="uvicorn log config")
-@click.option("--cmd-timeout", type=float, help="command execution timeout")
+@click.option("--cmd-timeout", type=float, envvar="VOLEXP_CMD_TIMEOUT", help="command execution timeout")
 @click.option("--check/--skip-check", default=True, help="pre-boot check")
 def server(host, port, log_config, check, **kwargs):
     """Run the volexport server."""

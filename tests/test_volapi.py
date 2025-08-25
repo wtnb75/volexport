@@ -109,7 +109,7 @@ class TestVolumeAPI(unittest.TestCase):
         res = TestClient(api).delete("/volume/volname1")
         self.assertEqual(200, res.status_code)
         self.assertEqual({}, res.json())
-        run.assert_called_once_with(["sudo", "lvremove", "vg0/volname1"], **self.run_basearg)
+        run.assert_called_once_with(["sudo", "lvremove", "vg0/volname1", "-y"], **self.run_basearg)
 
     @patch("subprocess.run")
     def test_statsvol(self, run):

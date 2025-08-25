@@ -213,7 +213,7 @@ class LV(Base):
 
     @override
     def delete(self) -> None:
-        runcmd(["lvremove", self.volname])
+        runcmd(["lvremove", self.volname, "-y"])
 
     @override
     def scan(self) -> list[dict]:
