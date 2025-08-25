@@ -57,8 +57,6 @@ def verbose_option(func):
 def server(host, port, log_config, check, **kwargs):
     """Run the volexport server."""
     import json
-    from .lvm2 import VG
-    from .tgtd import Tgtd
 
     for k, v in kwargs.items():
         if k is None or v is None or (isinstance(v, tuple) and len(v) == 0):
@@ -72,6 +70,8 @@ def server(host, port, log_config, check, **kwargs):
 
     from .api import api
     from .config import config
+    from .lvm2 import VG
+    from .tgtd import Tgtd
 
     _log.debug("config: %s", config)
     if log_config is None:

@@ -214,7 +214,9 @@ class Tgtd:
         res = []
         ifaddrs = {AF_INET: [], AF_INET6: []}
         for adapter in ifaddr.get_adapters():
+            _log.debug("check %s / %s", adapter, config.NICS)
             if adapter.name in config.NICS:
+                _log.debug("adapter %s", adapter.name)
                 for ip in adapter.ips:
                     if isinstance(ip.ip, tuple):
                         if ip.ip[2] != 0:
@@ -336,6 +338,55 @@ class Tgtd:
             lun=lun,
             acl=acl,
         )
+
+    def refresh_volume(self, tid: int, lun: int):
+        for tgtid, tgtinfo in self.target_list().items():
+            if tgtinfo is None:
+                continue
+            tgtid = tgtid.removeprefix("Target ")
+            if int(tgtid) != tid:
+                continue
+            luns = tgtinfo.get("LUN information", {})
+            for lunid, luninfo in luns.items():
+                lunid = lunid.removeprefix("LUN ")
+                if int(lunid) != lun:
+                    continue
+                _log.info("found lun: tid=%s, lun=%s, info=%s", tgtid, lunid, luninfo)
+                pathname = luninfo["Backing store path"]
+                readonly = luninfo["Readonly"] in ("Yes",)
+                opts = {}
+                if config.TGT_BSOPTS:
+                    opts["bsopts"] = config.TGT_BSOPTS
+                if config.TGT_BSOFLAGS:
+                    opts["bsoflags"] = config.TGT_BSOFLAGS
+                if readonly:
+                    opts["params"] = dict(readonly=1)
+                self.lun_delete(tid=tid, lun=lun)
+                self.lun_create(tid=tid, lun=lun, path=pathname, bstype=config.TGT_BSTYPE, **opts)
+                return
+
+    def refresh_volume_bypath(self, pathname: str):
+        for tgtid, tgtinfo in self.target_list().items():
+            if tgtinfo is None:
+                continue
+            tgtid = tgtid.removeprefix("Target ")
+            luns = tgtinfo.get("LUN information", {})
+            for lunid, luninfo in luns.items():
+                lunid = lunid.removeprefix("LUN ")
+                bs_pathname = luninfo["Backing store path"]
+                if bs_pathname != pathname:
+                    continue
+                _log.info("found lun: tid=%s, lun=%s, info=%s", tgtid, lunid, luninfo)
+                readonly = luninfo["Readonly"] in ("Yes",)
+                opts = {}
+                if config.TGT_BSOPTS:
+                    opts["bsopts"] = config.TGT_BSOPTS
+                if config.TGT_BSOFLAGS:
+                    opts["bsoflags"] = config.TGT_BSOFLAGS
+                if readonly:
+                    opts["params"] = dict(readonly=1)
+                self.lun_delete(tid=int(tgtid), lun=int(lunid))
+                self.lun_create(tid=int(tgtid), lun=int(lunid), path=pathname, bstype=config.TGT_BSTYPE, **opts)
 
     def get_export_bypath(self, filename: str):
         """Get export details by volume path"""

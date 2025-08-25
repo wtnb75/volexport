@@ -49,3 +49,82 @@ Options:
 - `volexport server [OPTIONS]`
 
 ## Examples
+
+prepare
+
+- `endpoint=http://volexport-api:8080/`
+
+create volume and mount
+
+- create volume (name=vol123, size=100GB)
+    - `curl --json $(jo name=vol123 size=107374182400) ${endpoint}/volume`
+- export volume
+    - `curl --json $(jo volname=vol123 acl=$(jo -a 192.168.1.0/24)) ${endpoint}/export`
+    - ```json
+      {
+        "protocol": "iscsi",
+        "addresses": [
+            "192.168.1.15:3260"
+        ],
+        "targetname": "iqn.2025-08.com.github.wtnb75:6688f7a2585ef52a139b",
+        "tid": 1,
+        "user": "8f83941a93ae81afe7ab",
+        "passwd": "60e9eee2c9e3747f697a68bb5feb1cb37c55ef25",
+        "lun": 1,
+        "acl": [
+            "192.168.1.0/24"
+        ]
+      }
+      ```
+    - `target=iqn.2025-08.com.github.wtnb75:6688f7a2585ef52a139b`
+- attach
+    - `iscsiadm -m discovery -t st -p 192.168.1.15`
+    - `iscsiadm -m node -T ${target} -o update -n node.session.auth.authmethod -v CHAP`
+    - `iscsiadm -m node -T ${target} -o update -n node.session.auth.username -v user123`
+    - `iscsiadm -m node -T ${target} -o update -n node.session.auth.password -v password123`
+    - `iscsiadm -m node -T ${target} -l`
+    - `iscsiadm -m session -P 3`
+        - view device name
+- mkfs
+    - `mkfs /dev/(device name)`
+- mount
+    - `mount /dev/(device name) (mount point)`
+
+enlarge volume
+
+- resize volume(100GB -> 200GB)
+    - `curl --json $(jo size=214748364800) ${endpoint}/volume/vol123`
+- apply new size
+    - `iscsiadm -m node -T ${target} -R`
+- resize filesystem
+    - `resize2fs /dev/(device name)`
+
+shrink volume
+
+- umount
+    - `umount (mount point)`
+- resize filesystem
+    - `e2fsck -f /dev/(device name)`
+    - `resize2fs /dev/(device name) 50G`
+- mount
+    - `mount /dev/(device name) (mount point)`
+- resize volume(-> 50GB)
+    - `curl --json $(jo size=53687091200) ${endpoint}/volume/vol123`
+- apply new size
+    - `iscsiadm -m node -T ${target} -R`
+
+umount and detach
+
+- umount
+    - `umount /dev/(device name)`
+- detach
+    - `iscsiadm -m node -T ${target} -u`
+- remove discovery
+    - `iscsiadm -m discoverydb -t st -p 192.168.1.10 --op delete`
+
+unexport and delete volume
+
+- unexport
+    - `curl -XDELETE ${endpoint}/export/${target}`
+- delete volume
+    - `curl -XDELETE ${endpoint}/volume/vol123`
