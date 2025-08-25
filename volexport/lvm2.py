@@ -265,4 +265,4 @@ class LV(Base):
     def resize(self, newsize: int):
         """Resize the logical volume to a new size in bytes"""
         assert self.name is not None
-        runcmd(["lvresize", "--size", str(newsize), self.volname])
+        runcmd(["lvresize", "--size", f"{newsize}b", self.volname, "-y"])

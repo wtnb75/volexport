@@ -21,6 +21,7 @@ class Config(BaseSettings):
     NICS: list[str] = Field(description="List of network interfaces to use")
     IQN_BASE: str = Field(default="iqn.2025-08.com.github.wtnb75", description="Base IQN for iSCSI targets")
     CMD_TIMEOUT: float = Field(default=10.0, description="Timeout for commands in seconds")
+    BACKUP_DIR: str = Field(default="/tmp", description="backup directory")
 
 
 config = Config()  # type: ignore

@@ -1,0 +1,26 @@
+base:
+- template://ubuntu-24.04
+
+containerd:
+  system: false
+  user: false
+
+networks:
+- lima: user-v2
+
+additionalDisks:
+- name: vol1
+  format: false
+
+provision:
+- mode: system
+  script: |
+    apt update
+    apt install -y podman-docker podman-compose tgt
+    apt install -y python3-venv
+    systemctl enable tgt
+
+- mode: user
+  script: |
+    python3 -m venv /tmp/venv
+    echo '. /tmp/venv/bin/activate' >> $HOME/.bashrc

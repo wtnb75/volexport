@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from .config import config
 from .lvm2 import LV, VG
+from .tgtd import Tgtd
 
 router = APIRouter()
 
@@ -63,11 +64,13 @@ def delete_volume(name) -> dict:
 
 @router.post("/volume/{name}", description="Update a volume by name")
 def update_volume(name, arg: VolumeUpdateRequest) -> VolumeReadResponse:
+    lv = LV(config.VG, name)
     if arg.readonly is not None:
-        LV(config.VG, name).read_only(arg.readonly)
+        lv.read_only(arg.readonly)
     if arg.size is not None:
-        LV(config.VG, name).resize(arg.size)
-    return VolumeReadResponse.model_validate(LV(config.VG, name).volume_read())
+        lv.resize(arg.size)
+        Tgtd().refresh_volume_bypath(lv.volume_vol2path())
+    return VolumeReadResponse.model_validate(lv.volume_read())
 
 
 @router.get("/stats/volume", description="Get statistics of the volume pool")

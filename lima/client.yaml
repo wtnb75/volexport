@@ -1,0 +1,15 @@
+base:
+- template://ubuntu-24.04
+
+containerd:
+  system: false
+  user: false
+
+networks:
+- lima: user-v2
+
+provision:
+- mode: system
+  script: |
+    apt update
+    apt install -y open-iscsi jo jq

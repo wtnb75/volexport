@@ -4,11 +4,13 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from .api_export import router as export_router
 from .api_volume import router as volume_router
+from .api_mgmt import router as mgmt_router
 
 _log = getLogger(__name__)
 api = FastAPI()
 api.include_router(export_router)
 api.include_router(volume_router)
+api.include_router(mgmt_router)
 
 
 @api.exception_handler(FileNotFoundError)
