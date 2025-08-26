@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import PlainTextResponse
 from pathlib import Path
 import datetime
@@ -11,6 +11,8 @@ router = APIRouter()
 
 
 def _backup_file(name) -> Path:
+    assert "/" not in name
+    assert not name.startswith(".")
     dir = Path(config.BACKUP_DIR)
     return (dir / name).with_suffix(".backup")
 
@@ -46,6 +48,15 @@ def get_backup(name: str):
     if path.exists():
         return PlainTextResponse(path.read_text())
     raise FileNotFoundError("backup file not found")
+
+
+@router.put("/mgmt/backup/{name}")
+async def put_backup(name: str, req: Request):
+    path = _backup_file(name)
+    if path.exists():
+        raise FileExistsError("backup already exists")
+    path.write_bytes(await req.body())
+    return {"status": "OK"}
 
 
 @router.post("/mgmt/backup/{name}")

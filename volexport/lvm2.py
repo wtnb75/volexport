@@ -1,8 +1,10 @@
 import shlex
 import datetime
+from subprocess import CalledProcessError
 from abc import abstractmethod
 from .util import runcmd
 from .config import config
+from .exceptions import InvalidArgument
 from logging import getLogger
 from typing import Sequence, override
 
@@ -190,26 +192,31 @@ class LV(Base):
     @override
     def create(self, size: int) -> dict:
         assert self.name is not None
-        runcmd(["lvcreate", "--size", f"{size}b", self.vgname, "--name", self.name])
-        return dict(name=self.name, size=size, device=f"/dev/{self.vgname}/{self.name}")
+        try:
+            runcmd(["lvcreate", "--size", f"{size}b", self.vgname, "--name", self.name])
+            return dict(name=self.name, size=size, device=self.volume_vol2path())
+        except CalledProcessError as e:
+            if e.returncode == 3:
+                raise InvalidArgument(f"invalid size: {size}")
+            raise
 
     def create_snapshot(self, size: int, parent: str) -> dict:
         """Create a snapshot of a logical volume"""
         assert self.name is not None
         runcmd(["lvcreate", "--snapshot", "--size", f"{size}b", "--name", self.name, f"/dev/{self.vgname}/{parent}"])
-        return dict(name=self.name, size=size, device=f"/dev/{self.vgname}/{self.name}")
+        return dict(name=self.name, size=size, device=self.volume_vol2path())
 
     def create_thinpool(self, size: int) -> dict:
         """Create a thin pool logical volume"""
         assert self.name is not None
         runcmd(["lvcreate", "--thinpool", self.name, "-L", f"{size}b", self.vgname])
-        return dict(name=self.name, size=size, device=f"/dev/{self.vgname}/{self.name}")
+        return dict(name=self.name, size=size, device=self.volume_vol2path())
 
     def create_thin(self, size: int, thinpool: str) -> dict:
         """Create a thin logical volume in a thin pool"""
         assert self.name is not None
         runcmd(["lvcreate", "--thin", "-V", f"{size}b", "-n", self.name, f"{self.vgname}/{thinpool}"])
-        return dict(name=self.name, size=size, device=f"/dev/{self.vgname}/{self.name}")
+        return dict(name=self.name, size=size, device=self.volume_vol2path())
 
     @override
     def delete(self) -> None:
@@ -229,7 +236,16 @@ class LV(Base):
                 vol["LV Creation host, time"].split(",", 1)[-1].strip(), "%Y-%m-%d %H:%M:%S %z"
             )
             size = int(vol["LV Size"].removesuffix(" B"))
-            res.append(dict(name=vol["LV Name"], created=created.isoformat(), size=size, used=int(vol["# open"])))
+            readonly = vol["LV Write Access"] == "read only"
+            res.append(
+                dict(
+                    name=vol["LV Name"],
+                    created=created.isoformat(),
+                    size=size,
+                    used=int(vol["# open"]),
+                    readonly=readonly,
+                )
+            )
         return res
 
     def volume_read(self):
@@ -242,7 +258,14 @@ class LV(Base):
                 vol["LV Creation host, time"].split(",", 1)[-1].strip(), "%Y-%m-%d %H:%M:%S %z"
             )
             size = int(vol["LV Size"].removesuffix(" B"))
-            return dict(name=vol["LV Name"], created=created.isoformat(), size=size, used=int(vol["# open"]))
+            readonly = vol["LV Write Access"] == "read only"
+            return dict(
+                name=vol["LV Name"],
+                created=created.isoformat(),
+                size=size,
+                used=int(vol["# open"]),
+                readonly=readonly,
+            )
         return None
 
     def volume_vol2path(self):
