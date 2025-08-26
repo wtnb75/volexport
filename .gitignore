@@ -11,3 +11,5 @@ cover
 build/
 /api/
 /pkg/
+*.rpm
+*.deb

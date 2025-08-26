@@ -3,7 +3,9 @@
 version: '3'
 
 vars:
-  GREETING: Hello, World!
+  VMS:
+    - server
+    - client
 
 tasks:
   default:
@@ -81,21 +83,28 @@ tasks:
   vm:create:
     desc: create VMs
     cmds:
-      - "limactl create lima/server.yaml -y"
-      - "limactl create lima/client.yaml -y"
+      - for:
+          var: VMS
+        cmd: "limactl create lima/{{.ITEM}}.yaml -y"
 
   vm:start:
     desc: start VMs
     cmds:
-      - "limactl start server"
-      - "limactl start client"
+      - for:
+          var: VMS
+        cmd: "limactl start {{.ITEM}}"
 
-  vm:prepare:
+  vm:prepare:server:
     desc: prepare server
     cmds:
       - "limactl shell server /tmp/venv/bin/pip install -r requirements.txt"
       - "limactl shell server sudo pvcreate /dev/vdb"
       - "limactl shell server sudo vgcreate vg0 /dev/vdb"
+
+  vm:prepare:client:
+    desc: prepare client
+    cmds:
+      - "limactl shell client /tmp/venv/bin/pip install -r requirements.txt -r requirements-client.txt"
 
   vm:server:boot:
     desc: boot volexport server
@@ -105,11 +114,13 @@ tasks:
   vm:stop:
     desc: stop VMs
     cmds:
-      - "limactl stop server"
-      - "limactl stop client"
+      - for:
+          var: VMS
+        cmd: "limactl stop {{.ITEM}}"
 
   vm:delete:
     desc: delete VMs
     cmds:
-      - "limactl delete server"
-      - "limactl delete client"
+      - for:
+          var: VMS
+        cmd: "limactl delete {{.ITEM}}"

@@ -2,7 +2,7 @@ base:
 - template://ubuntu-24.04
 
 containerd:
-  system: false
+  system: true
   user: false
 
 networks:
@@ -16,8 +16,7 @@ provision:
 - mode: system
   script: |
     apt update
-    apt install -y podman-docker podman-compose tgt
-    apt install -y python3-venv
+    apt install -y tgt python3-venv
     systemctl enable tgt
 
 - mode: user

@@ -1,9 +1,8 @@
 import os
 import click
 import uvicorn
-import functools
-from typing import Optional
 from logging import getLogger
+from .cli_utils import verbose_option
 from .version import VERSION
 
 _log = getLogger(__name__)
@@ -15,27 +14,6 @@ _log = getLogger(__name__)
 def cli(ctx):
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
-
-
-def set_verbose(verbose: Optional[bool]):
-    from logging import basicConfig
-
-    fmt = "%(asctime)s %(levelname)s %(name)s %(message)s"
-    level = "INFO"
-    if verbose:
-        level = "DEBUG"
-    elif verbose is not None:
-        level = "WARNING"
-    basicConfig(level=level, format=fmt)
-
-
-def verbose_option(func):
-    @functools.wraps(func)
-    def wrap(verbose, *args, **kwargs):
-        set_verbose(verbose)
-        return func(*args, **kwargs)
-
-    return click.option("--verbose/--quiet", default=None, help="log level")(wrap)
 
 
 @cli.command()

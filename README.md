@@ -48,7 +48,7 @@ Options:
 
 - `volexport server [OPTIONS]`
 
-## Examples
+## Examples (curl)
 
 prepare
 
@@ -84,7 +84,7 @@ create volume and mount
     - `iscsiadm -m node -T ${target} -o update -n node.session.auth.password -v passwd123`
     - `iscsiadm -m node -T ${target} -l`
     - `iscsiadm -m session -P 3`
-        - view device name
+        - shows device name at last line
 - mkfs
     - `mkfs /dev/(device name)`
 - mount
@@ -128,3 +128,27 @@ unexport and delete volume
     - `curl -XDELETE ${endpoint}/export/${target}`
 - delete volume
     - `curl -XDELETE ${endpoint}/volume/vol123`
+
+## Examples (internal REST client)
+
+prepare
+
+- `export VOLEXP_ENDPOINT=http://volexport-api:8080/`
+
+create volume and mount
+
+- create volume (name=vol123, size=100GB)
+    - `volexp-client create-volume --name vol123 --size 100G`
+- export volume
+    - `volexp-client create-export --name vol123`
+    - ```
+      iscsiadm -m discovery -t st -p 192.168.104.1:3260
+      iscsiadm -m node -T iqn.xxxx:yyyy -o update -n node.session.auth.authmethod -v CHAP
+      iscsiadm -m node -T iqn.xxxx:yyyy -o update -n node.session.auth.username -v user123`
+      iscsiadm -m node -T iqn.xxxx:yyyy -o update -n node.session.auth.password -v passwd123`
+      iscsiadm -m node -T iqn.xxxx:yyyy -l`
+      ```
+- attach
+    - copy and paste, execute commands
+    - `iscsiadm -m session -P 3`
+        - shows device name at last line

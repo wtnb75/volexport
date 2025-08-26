@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from .config import config
 from .tgtd import Tgtd
@@ -9,7 +9,7 @@ router = APIRouter()
 
 class ExportRequest(BaseModel):
     volname: str = Field(description="Volume name to export", examples=["volume1"])
-    acl: list[str] = Field(description="Source IP Addresses to allow access")
+    acl: list[str] | None = Field(description="Source IP Addresses to allow access")
     readonly: bool = Field(default=False, description="read-only if true", examples=[True, False])
 
 
@@ -57,8 +57,10 @@ def list_export() -> list[ExportReadResponse]:
 
 
 @router.post("/export", description="Create a new export")
-def create_export(arg: ExportRequest) -> ExportResponse:
+def create_export(req: Request, arg: ExportRequest) -> ExportResponse:
     filename = LV(config.VG, arg.volname).volume_vol2path()
+    if not arg.acl:
+        arg.acl = [req.client.host]
     return ExportResponse.model_validate(Tgtd().export_volume(filename=filename, acl=arg.acl, readonly=arg.readonly))
 
 

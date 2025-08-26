@@ -24,6 +24,7 @@ class VolumeReadResponse(BaseModel):
     created: datetime.datetime = Field(description="Creation timestamp of the volume", examples=["2023-10-01T12:00:00"])
     size: int = Field(description="Size of the volume in bytes", examples=[1073741824])
     used: int = Field(description="in-use count", examples=[0, 1])
+    readonly: bool = Field(description="true if read-only", examples=[True, False])
 
 
 class VolumeUpdateRequest(BaseModel):

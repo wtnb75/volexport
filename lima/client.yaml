@@ -12,4 +12,9 @@ provision:
 - mode: system
   script: |
     apt update
-    apt install -y open-iscsi jo jq
+    apt install -y open-iscsi jo jq python3-venv
+
+- mode: user
+  script: |
+    python3 -m venv /tmp/venv
+    echo '. /tmp/venv/bin/activate' >> $HOME/.bashrc

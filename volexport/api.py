@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from .api_export import router as export_router
 from .api_volume import router as volume_router
 from .api_mgmt import router as mgmt_router
+from .exceptions import InvalidArgument
 
 _log = getLogger(__name__)
 api = FastAPI()
@@ -35,6 +36,12 @@ def notimplemented(request: Request, exc: NotImplementedError):
 def commanderror(request: Request, exc: SubprocessError):
     _log.info("command error: request=%s %s", request.method, request.url.path, exc_info=exc)
     return JSONResponse(status_code=500, content=dict(detail="internal error"))
+
+
+@api.exception_handler(InvalidArgument)
+def badrequest(request: Request, exc: FileNotFoundError):
+    _log.info("invalid argument: request=%s %s", request.method, request.url.path, exc_info=exc)
+    return JSONResponse(status_code=400, content=dict(detail="\n".join(exc.args)))
 
 
 @api.exception_handler(TypeError)
