@@ -62,8 +62,8 @@ class TestVolumeAPI(unittest.TestCase):
   Block device           252:1
     """
     volume_info = [
-        dict(name="lv1", created="2025-08-10T16:48:15+09:00", size=68719476736, used=1),
-        dict(name="lv2", created="2025-08-12T16:48:15+09:00", size=20000000000, used=0),
+        dict(name="lv1", created="2025-08-10T16:48:15+09:00", size=68719476736, used=1, readonly=False),
+        dict(name="lv2", created="2025-08-12T16:48:15+09:00", size=20000000000, used=0, readonly=False),
     ]
 
     @patch("subprocess.run")
