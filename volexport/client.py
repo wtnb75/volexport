@@ -136,6 +136,20 @@ def volume_resize(req, name, size):
 @client_option
 @output_format
 @click.option("--name", required=True, help="volume name")
+@click.option("--filesystem", default="ext4", help="filesystem")
+@click.option("--label")
+def volume_mkfs(req, name, filesystem, label):
+    """mkfs volume"""
+    res = req.post(f"/volume/{name}/mkfs", json={"filesystem": filesystem, "label": label})
+    res.raise_for_status()
+    return res.json()
+
+
+@cli.command()
+@verbose_option
+@client_option
+@output_format
+@click.option("--name", required=True, help="volume name")
 def volume_delete(req, name):
     """delete volume"""
     res = req.delete(f"/volume/{name}")
@@ -204,10 +218,12 @@ def export_read(req, targetname):
 @verbose_option
 @client_option
 @output_format
+@click.option("--force/--no-force", default=False, show_default=True, help="force delete export")
 @click.option("--targetname", required=True, help="target name")
-def export_delete(req, targetname):
+def export_delete(req: VERequest, targetname, force):
     """delete export"""
-    res = req.delete(f"/export/{targetname}")
+    param = {"force": "1"} if force else {}
+    res = req.delete(f"/export/{targetname}", params=param)
     res.raise_for_status()
     return res.json()
 

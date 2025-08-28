@@ -154,6 +154,7 @@ Target 1: iqn.def
             listvol,
             simple_ok,  # create target
             simple_ok,  # create lun
+            simple_ok,  # update lun
             simple_ok,  # create account
             simple_ok,  # bind account
             simple_ok,  # setup ACL
@@ -172,7 +173,7 @@ Target 1: iqn.def
         res = TestClient(api).post("/export", json={"volname": "vol00", "acl": ["1.1.1.1/32"]})
         self.assertEqual(200, res.status_code)
         self.assertEqual(expected, res.json())
-        self.assertEqual(7, run.call_count)
+        self.assertEqual(8, run.call_count)
         run.assert_any_call(
             ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"], **self.run_basearg
         )
@@ -260,6 +261,7 @@ Target 1: iqn.def
             listvol,
             simple_ok,  # create target
             simple_ok,  # create lun
+            simple_ok,  # update lun
             simple_ok,  # create account
             simple_ok,  # bind account
             simple_ok,  # setup ACL
@@ -278,7 +280,7 @@ Target 1: iqn.def
         res = TestClient(api).post("/export", json={"volname": "vol00", "acl": ["1.1.1.1/32"], "readonly": True})
         self.assertEqual(200, res.status_code)
         self.assertEqual(expected, res.json())
-        self.assertEqual(7, run.call_count)
+        self.assertEqual(8, run.call_count)
         run.assert_any_call(
             ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"], **self.run_basearg
         )
