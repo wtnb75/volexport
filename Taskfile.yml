@@ -104,7 +104,7 @@ tasks:
   vm:prepare:client:
     desc: prepare client
     cmds:
-      - "limactl shell client /tmp/venv/bin/pip install -r requirements.txt -r requirements-client.txt"
+      - "limactl shell client /tmp/venv/bin/pip install -r requirements.txt"
 
   vm:server:boot:
     desc: boot volexport server
@@ -116,11 +116,32 @@ tasks:
     cmds:
       - for:
           var: VMS
-        cmd: "limactl stop {{.ITEM}}"
+        cmd: "limactl stop {{.ITEM}} -f"
 
   vm:delete:
     desc: delete VMs
     cmds:
       - for:
           var: VMS
-        cmd: "limactl delete {{.ITEM}}"
+        cmd: "limactl delete {{.ITEM}} -f"
+
+  vm:xpanes:
+    desc: login
+    cmds:
+      - 'xpanes -S /tmp/tmux-$(id -u)/default -c "limactl shell {}" {{join " " .VMS}}'
+
+  vm:startup:
+    desc: startup VMs (create disk, create, start, prepare)
+    cmds:
+      - task: vm:create:disk
+      - task: vm:create
+      - task: vm:start
+      - task: vm:prepare:server
+      - task: vm:prepare:client
+
+  vm:cleanup:
+    desc: cleanup VMs (stop, delete, delete disk)
+    cmds:
+      - task: vm:stop
+      - task: vm:delete
+      - task: vm:delete:disk

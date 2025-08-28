@@ -323,6 +323,7 @@ class Tgtd:
         if readonly:
             opts["params"] = dict(readonly=1)
         self.lun_create(tid=tid, lun=lun, path=filename, bstype=config.TGT_BSTYPE, **opts)
+        self.lun_update(tid=tid, lun=lun, vendor_id="VOLEXP", product_id=Path(filename).name)
         self.account_create(user=user, password=passwd)
         self.account_bind(tid=tid, user=user)
         for addr in acl:
