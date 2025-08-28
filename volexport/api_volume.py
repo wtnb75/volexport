@@ -1,4 +1,5 @@
 import datetime
+from enum import Enum
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from .config import config
@@ -30,6 +31,21 @@ class VolumeReadResponse(BaseModel):
 class VolumeUpdateRequest(BaseModel):
     size: int | None = Field(default=None, description="New size of the volume in bytes", examples=[2147483648])
     readonly: bool | None = Field(default=None, description="Set volume to read-only if true", examples=[True, False])
+
+
+class Filesystem(str, Enum):
+    ext4 = "ext4"
+    xfs = "xfs"
+    btrfs = "btrfs"
+    vfat = "vfat"
+    ntfs = "ntfs"
+    exfat = "exfat"
+    nilfs2 = "nilfs2"
+
+
+class VolumeFormatRequest(BaseModel):
+    filesystem: Filesystem = Field(default=Filesystem.ext4, description="Make filesystem in the volume")
+    label: str | None = Field(default=None, description="Label of filesystem")
 
 
 class PoolStats(BaseModel):
@@ -71,6 +87,13 @@ def update_volume(name, arg: VolumeUpdateRequest) -> VolumeReadResponse:
     if arg.size is not None:
         lv.resize(arg.size)
         Tgtd().refresh_volume_bypath(lv.volume_vol2path())
+    return VolumeReadResponse.model_validate(lv.volume_read())
+
+
+@router.post("/volume/{name}/mkfs", description="Format a volume, make filesystem")
+def format_volume(name, arg: VolumeFormatRequest) -> VolumeReadResponse:
+    lv = LV(config.VG, name)
+    lv.format_volume(arg.filesystem.name, arg.label)
     return VolumeReadResponse.model_validate(lv.volume_read())
 
 

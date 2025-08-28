@@ -1,5 +1,6 @@
 import shlex
 import datetime
+import shutil
 from subprocess import CalledProcessError
 from abc import abstractmethod
 from .util import runcmd
@@ -53,6 +54,7 @@ def runparse(cmd: list[str], indent: int, width: int) -> list[dict]:
 
 class Base:
     def __init__(self, name: str | None = None):
+        assert name is None or "/" not in name
         self.name = name
 
     def find_by(self, data: list[dict], keyname: str, value: str):
@@ -289,3 +291,19 @@ class LV(Base):
         """Resize the logical volume to a new size in bytes"""
         assert self.name is not None
         runcmd(["lvresize", "--size", f"{newsize}b", self.volname, "-y"])
+
+    def format_volume(self, filesystem: str, label: str | None):
+        if shutil.which(f"mkfs.{filesystem}") is None:
+            _log.error("command does not found: mkfs.%s", filesystem)
+            raise NotImplementedError("not supported")
+
+        volpath = self.volume_vol2path()
+        if filesystem in ("ext4", "xfs", "exfat", "btrfs", "ntfs", "nilfs2"):
+            lbl = ["-L", label or self.name]
+            runcmd([f"mkfs.{filesystem}", *lbl, volpath])
+        elif filesystem in ("vfat",):
+            lbl = ["-n", label or self.name]
+            runcmd([f"mkfs.{filesystem}", *lbl, volpath])
+        else:
+            _log.error("no such filesystem: %s", filesystem)
+            raise NotImplementedError("not supported")

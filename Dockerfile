@@ -5,6 +5,7 @@ RUN cd /app/dist && pip wheel -r ../requirements.txt
 
 FROM python:3-alpine
 RUN apk add --no-cache targetcli scsi-tgt scsi-tgt-scripts lvm2 lvm2-extra tini
+RUN apk add --no-cache e2fsprogs exfatprogs btrfs-progs dosfstools xfsprogs nilfs-utils
 ENV PYTHONDONTWRITEBYTECODE=1
 COPY --from=build /app/dist/*.whl /dist/
 ADD --chmod=755 entrypoint.sh /

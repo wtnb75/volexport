@@ -139,8 +139,12 @@ create volume and mount
 
 - create volume (name=vol123, size=100GB)
     - `volexp-client volume-create --name vol123 --size 100G`
+- mkfs volume
+    - `volexp-client volume-mkfs --name vol123 --filesystem ext4`
 - export volume
     - `volexp-client export-create --name vol123`
+- attach
+    - copy and paste, execute commands
     - ```
       iscsiadm -m discovery -t st -p 192.168.104.1:3260
       iscsiadm -m node -T iqn.xxxx:yyyy -o update -n node.session.auth.authmethod -v CHAP
@@ -148,7 +152,6 @@ create volume and mount
       iscsiadm -m node -T iqn.xxxx:yyyy -o update -n node.session.auth.password -v passwd123
       iscsiadm -m node -T iqn.xxxx:yyyy -l
       ```
-- attach
-    - copy and paste, execute commands
     - `iscsiadm -m session -P 3`
         - shows device name at last line
+    - volume label if mkfs'ed: `lsblk -f`, `blkid`, etc...
