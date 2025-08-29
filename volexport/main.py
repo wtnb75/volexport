@@ -57,6 +57,9 @@ def server(host, port, log_config, check, **kwargs):
 
     # pre-boot check
     if check:
+        if os.getuid() == 0 and config.BECOME_METHOD:
+            _log.info("you are already root. disable become_method")
+            config.BECOME_METHOD = ""
         assert VG(config.VG).get() is not None
         assert Tgtd().sys_show() is not None
 

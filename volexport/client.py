@@ -1,7 +1,7 @@
 import click
 import requests
 import functools
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from logging import getLogger
 from .cli_utils import verbose_option, SizeType, output_format
 from .version import VERSION
@@ -190,14 +190,20 @@ def export_stats(req):
 @click.option("--name", required=True, help="volume name")
 @click.option("--show-command/--no-command", default=True, show_default=True)
 @click.option("--acl", multiple=True, help="access control list")
-def export_create(req, name, acl, show_command):
+def export_create(req: VERequest, name, acl, show_command):
     """create new export"""
     res = req.post("/export", json={"volname": name, "acl": list(acl)})
     res.raise_for_status()
     if show_command:
         data = res.json()
+        addrs = data["addresses"]
+        if addrs:
+            addr = addrs[0]
+        else:
+            _log.warning("volexp returns no ip address.")
+            addr = urlparse(req.baseurl).hostname
         click.echo(f"""
-iscsiadm -m discovery -t st -p {data["addresses"][0]}
+iscsiadm -m discovery -t st -p {addr}
 iscsiadm -m node -T {data["targetname"]} -o update -n node.session.auth.authmethod -v CHAP
 iscsiadm -m node -T {data["targetname"]} -o update -n node.session.auth.username -v {data["user"]}
 iscsiadm -m node -T {data["targetname"]} -o update -n node.session.auth.password -v {data["passwd"]}
