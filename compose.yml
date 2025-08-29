@@ -1,0 +1,11 @@
+services:
+  api:
+    image: ghcr.io/wtnb75/volexport:main
+    volumes:
+    - /dev:/dev
+    privileged: true
+    network_mode: host
+    environment:
+      VOLEXP_VG: vg0
+      VOLEXP_NICS: '["eth0"]'
+      VOLEXP_HOST: 0.0.0.0

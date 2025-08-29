@@ -48,6 +48,79 @@ Options:
 
 - `volexport server [OPTIONS]`
 
+### Run as a container
+
+CLI
+
+- `docker run --privileged --network host -v /dev:/dev ghcr.io/wtnb75/volexport /entrypoint.sh --host 0.0.0.0 --vg vg0 --nics eth0`
+
+docker compose
+
+```yaml
+services:
+  api:
+    image: ghcr.io/wtnb75/volexport:main
+    volumes:
+    - /dev:/dev
+    privileged: true
+    network_mode: host
+    environment:
+      VOLEXP_VG: vg0
+      VOLEXP_NICS: '["eth0"]'
+      VOLEXP_HOST: 0.0.0.0
+```
+
+<details>
+<summary>TBD</summary>
+
+k8s
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: volexport
+spec:
+  securityContext:
+    runAsUser: 0
+  nodeSelector:
+    volexp: iscsi  # set this label to volexp node
+  containers:
+    - name: volexport
+      image: ghcr.io/wtnb75/volexport:main
+      hostNetwork: true
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - name: devdir
+          mountPath: /dev
+          readOnly: false
+      ports:
+        - name: api
+          containerPort: 8080
+          protocol: TCP
+        - name: iscsi
+          containerPort: 3260
+          protocol: TCP
+      env:
+        - name: VOLEXP_VG
+          value: "vg0"
+        - name: VOLEXP_NICS
+          value: '["eth0"]'
+        - name: VOLEXP_HOST
+          value: 0.0.0.0
+  volumes:
+  - name: devdir
+    hostPath:
+      path: /dev
+```
+
+helm
+
+- `helm install volexport helm`
+
+</details>
+
 ## Examples (curl)
 
 prepare
