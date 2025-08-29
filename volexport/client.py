@@ -27,6 +27,10 @@ class VERequest(requests.Session):
                 res.status_code,
                 res.json(),
             )
+            if res.status_code == requests.codes.unprocessable:
+                errs = res.json().get("detail", [])
+                for err in errs:
+                    _log.warning("validation error at %s: %s", ".".join(err.get("loc", [])), err.get("msg"))
         except Exception:
             _log.debug(
                 "response(text): elapsed=%s method=%s url=%s code=%s, body=%s",

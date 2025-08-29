@@ -1,6 +1,6 @@
 import unittest
 import subprocess
-from unittest.mock import patch, ANY
+from unittest.mock import patch, ANY, MagicMock
 from fastapi.testclient import TestClient
 from volexport.api import api
 
@@ -93,15 +93,19 @@ class TestVolumeAPI(unittest.TestCase):
         self.assertEqual({"detail": "volume not found"}, res.json())
         run.assert_called_once_with(["sudo", "lvdisplay", "--unit", "b", "vg0"], **self.run_basearg)
 
+    def test_createvol_sector(self):
+        res = TestClient(api).post("/volume", json={"name": "volname1", "size": 12345})
+        self.assertEqual(422, res.status_code)
+
     @patch("subprocess.run")
     def test_createvol(self, run):
-        run.return_value.exit_code = 0
-        res = TestClient(api).post("/volume", json={"name": "volname1", "size": 12345})
+        create = MagicMock(exit_code=0)
+        read = MagicMock(exit_code=0, stdout=self.lvdisplay)
+        run.side_effect = [create, read]
+        res = TestClient(api).post("/volume", json={"name": "lv1", "size": 512})
         self.assertEqual(200, res.status_code)
-        self.assertEqual({"name": "volname1", "size": 12345, "device": "/dev/vg0/volname1"}, res.json())
-        run.assert_called_once_with(
-            ["sudo", "lvcreate", "--size", "12345b", "vg0", "--name", "volname1"], **self.run_basearg
-        )
+        self.assertEqual({"name": "lv1", "size": 68719476736}, res.json())
+        run.assert_any_call(["sudo", "lvcreate", "--size", "512b", "vg0", "--name", "lv1"], **self.run_basearg)
 
     @patch("subprocess.run")
     def test_deletevol(self, run):
