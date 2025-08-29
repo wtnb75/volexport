@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from .config import config
+from .config2 import config2
 from .tgtd import Tgtd
 from .lvm2 import LV
 
@@ -47,7 +48,7 @@ class ExportStats(BaseModel):
 
 def _fixpath(data: dict) -> dict:
     if "volumes" in data:
-        data["volumes"] = [LV(config.VG).volume_path2vol(x) for x in data["volumes"]]
+        data["volumes"] = [LV(config2.VG).volume_path2vol(x) for x in data["volumes"]]
     return data
 
 
@@ -58,8 +59,9 @@ def list_export() -> list[ExportReadResponse]:
 
 @router.post("/export", description="Create a new export")
 def create_export(req: Request, arg: ExportRequest) -> ExportResponse:
-    filename = LV(config.VG, arg.volname).volume_vol2path()
+    filename = LV(config2.VG, arg.volname).volume_vol2path()
     if not arg.acl:
+        assert req.client is not None
         arg.acl = [req.client.host]
     return ExportResponse.model_validate(Tgtd().export_volume(filename=filename, acl=arg.acl, readonly=arg.readonly))
 

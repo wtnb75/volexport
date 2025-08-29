@@ -8,6 +8,7 @@ from pathlib import Path
 from logging import getLogger
 from typing import Sequence
 from .config import config
+from .config2 import config2
 from .util import runcmd
 
 _log = getLogger(__name__)
@@ -214,8 +215,8 @@ class Tgtd:
         res = []
         ifaddrs = {AF_INET: [], AF_INET6: []}
         for adapter in ifaddr.get_adapters():
-            _log.debug("check %s / %s", adapter, config.NICS)
-            if adapter.name in config.NICS:
+            _log.debug("check %s / %s", adapter, config2.NICS)
+            if adapter.name in config2.NICS:
                 _log.debug("adapter %s", adapter.name)
                 for ip in adapter.ips:
                     if isinstance(ip.ip, tuple):
@@ -286,8 +287,8 @@ class Tgtd:
                 if lun["Type"] == "controller":
                     continue
                 volumes.append(lun["Backing store path"])
-            accounts = list(tgtinfo.get("Account information", {}).keys())
-            acls = list(tgtinfo.get("ACL information", {}).keys())
+            accounts = list((tgtinfo.get("Account information") or {}).keys())
+            acls = list((tgtinfo.get("ACL information") or {}).keys())
             res.append(
                 dict(
                     protocol=self.lld,
@@ -425,7 +426,8 @@ class Tgtd:
                 acls = data.get("ACL information", {})
                 if acls is not None:
                     for acl in acls.keys():
-                        self.target_unbind_address(tid=tgtid, addr=acl)
+                        if acl:
+                            self.target_unbind_address(tid=tgtid, addr=acl)
                 luns = data.get("LUN information", {})
                 if luns is not None:
                     for lun in sorted(

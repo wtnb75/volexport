@@ -48,6 +48,7 @@ def server(host, port, log_config, check, **kwargs):
 
     from .api import api
     from .config import config
+    from .config2 import config2
     from .lvm2 import VG
     from .tgtd import Tgtd
 
@@ -60,7 +61,7 @@ def server(host, port, log_config, check, **kwargs):
         if os.getuid() == 0 and config.BECOME_METHOD:
             _log.info("you are already root. disable become_method")
             config.BECOME_METHOD = ""
-        assert VG(config.VG).get() is not None
+        assert VG(config2.VG).get() is not None
         assert Tgtd().sys_show() is not None
 
     # start server

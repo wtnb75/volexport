@@ -4,6 +4,7 @@ from enum import Enum
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, AfterValidator
 from .config import config
+from .config2 import config2
 from .lvm2 import LV, VG
 from .tgtd import Tgtd
 
@@ -68,17 +69,17 @@ class PoolStats(BaseModel):
 
 @router.get("/volume", description="List all volumes")
 def list_volume():
-    return [VolumeReadResponse.model_validate(x) for x in LV(config.VG).volume_list()]
+    return [VolumeReadResponse.model_validate(x) for x in LV(config2.VG).volume_list()]
 
 
 @router.post("/volume", description="Create a new volume")
 def create_volume(arg: VolumeCreateRequest):
-    return VolumeCreateResponse.model_validate(LV(config.VG, arg.name).create(size=arg.size))
+    return VolumeCreateResponse.model_validate(LV(config2.VG, arg.name).create(size=arg.size))
 
 
 @router.get("/volume/{name}", description="Read volume details by name")
 def read_volume(name):
-    res = LV(config.VG, name).volume_read()
+    res = LV(config2.VG, name).volume_read()
     if res is None:
         raise HTTPException(status_code=404, detail="volume not found")
     return VolumeReadResponse.model_validate(res)
@@ -86,13 +87,13 @@ def read_volume(name):
 
 @router.delete("/volume/{name}", description="Delete a volume by name")
 def delete_volume(name) -> dict:
-    LV(config.VG, name).delete()
+    LV(config2.VG, name).delete()
     return {}
 
 
 @router.post("/volume/{name}", description="Update a volume by name")
 def update_volume(name, arg: VolumeUpdateRequest) -> VolumeReadResponse:
-    lv = LV(config.VG, name)
+    lv = LV(config2.VG, name)
     if arg.readonly is not None:
         lv.read_only(arg.readonly)
     if arg.size is not None:
@@ -103,14 +104,14 @@ def update_volume(name, arg: VolumeUpdateRequest) -> VolumeReadResponse:
 
 @router.post("/volume/{name}/mkfs", description="Format a volume, make filesystem")
 def format_volume(name, arg: VolumeFormatRequest) -> VolumeReadResponse:
-    lv = LV(config.VG, name)
+    lv = LV(config2.VG, name)
     lv.format_volume(arg.filesystem.value, arg.label)
     return VolumeReadResponse.model_validate(lv.volume_read())
 
 
 @router.get("/stats/volume", description="Get statistics of the volume pool")
 def stats_volume() -> PoolStats:
-    info = VG(config.VG).get()
+    info = VG(config2.VG).get()
     if info is None:
         raise HTTPException(status_code=404, detail="pool not found")
     vols = info.get("Cur LV", 0)
