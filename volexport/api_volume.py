@@ -3,7 +3,6 @@ from typing import Annotated
 from enum import Enum
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, AfterValidator
-from .config import config
 from .config2 import config2
 from .lvm2 import LV, VG
 from .tgtd import Tgtd

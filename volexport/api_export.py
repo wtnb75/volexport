@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
-from .config import config
 from .config2 import config2
 from .tgtd import Tgtd
 from .lvm2 import LV
