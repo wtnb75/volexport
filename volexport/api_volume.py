@@ -1,7 +1,8 @@
 import datetime
+from typing import Annotated
 from enum import Enum
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, AfterValidator
 from .config import config
 from .lvm2 import LV, VG
 from .tgtd import Tgtd
@@ -9,27 +10,37 @@ from .tgtd import Tgtd
 router = APIRouter()
 
 
+def _is_volsize(value: int):
+    if value % 512 != 0:
+        raise ValueError(f"invalid volume size: {value} is not multiple of 512")
+    return value
+
+
+VolumeSize = Annotated[int, AfterValidator(_is_volsize)]
+
+
 class VolumeCreateRequest(BaseModel):
     name: str = Field(description="Name of the volume to create", examples=["volume1"])
-    size: int = Field(description="Size of the volume in bytes", examples=[1073741824])
+    size: VolumeSize = Field(description="Size of the volume in bytes", examples=[1073741824], gt=0)
 
 
 class VolumeCreateResponse(BaseModel):
     name: str = Field(description="Name of the created volume", examples=["volume1"])
-    size: int = Field(description="Size of the created volume in bytes", examples=[1073741824])
-    device: str = Field(description="Device path of the created volume", examples=["/dev/vg/volume1"])
+    size: VolumeSize = Field(description="Size of the created volume in bytes", examples=[1073741824], gt=0)
 
 
 class VolumeReadResponse(BaseModel):
     name: str = Field(description="Name of the volume", examples=["volume1"])
     created: datetime.datetime = Field(description="Creation timestamp of the volume", examples=["2023-10-01T12:00:00"])
-    size: int = Field(description="Size of the volume in bytes", examples=[1073741824])
+    size: VolumeSize = Field(description="Size of the volume in bytes", examples=[1073741824], gt=0)
     used: int = Field(description="in-use count", examples=[0, 1])
     readonly: bool = Field(description="true if read-only", examples=[True, False])
 
 
 class VolumeUpdateRequest(BaseModel):
-    size: int | None = Field(default=None, description="New size of the volume in bytes", examples=[2147483648])
+    size: VolumeSize | None = Field(
+        default=None, description="New size of the volume in bytes", examples=[2147483648], gt=0
+    )
     readonly: bool | None = Field(default=None, description="Set volume to read-only if true", examples=[True, False])
 
 
@@ -93,7 +104,7 @@ def update_volume(name, arg: VolumeUpdateRequest) -> VolumeReadResponse:
 @router.post("/volume/{name}/mkfs", description="Format a volume, make filesystem")
 def format_volume(name, arg: VolumeFormatRequest) -> VolumeReadResponse:
     lv = LV(config.VG, name)
-    lv.format_volume(arg.filesystem.name, arg.label)
+    lv.format_volume(arg.filesystem.value, arg.label)
     return VolumeReadResponse.model_validate(lv.volume_read())
 
 

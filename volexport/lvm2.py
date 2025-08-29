@@ -196,7 +196,9 @@ class LV(Base):
         assert self.name is not None
         try:
             runcmd(["lvcreate", "--size", f"{size}b", self.vgname, "--name", self.name])
-            return dict(name=self.name, size=size, device=self.volume_vol2path())
+            res = self.volume_read()
+            assert res is not None
+            return res
         except CalledProcessError as e:
             if e.returncode == 3:
                 raise InvalidArgument(f"invalid size: {size}")
