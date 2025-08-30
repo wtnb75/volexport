@@ -20,16 +20,22 @@ VolumeSize = Annotated[int, AfterValidator(_is_volsize)]
 
 
 class VolumeCreateRequest(BaseModel):
+    """Request type for POST /volume"""
+
     name: str = Field(description="Name of the volume to create", examples=["volume1"])
     size: VolumeSize = Field(description="Size of the volume in bytes", examples=[1073741824], gt=0)
 
 
 class VolumeCreateResponse(BaseModel):
+    """Response type for POST /volume"""
+
     name: str = Field(description="Name of the created volume", examples=["volume1"])
     size: VolumeSize = Field(description="Size of the created volume in bytes", examples=[1073741824], gt=0)
 
 
 class VolumeReadResponse(BaseModel):
+    """Response type for GET /volume/{name}, GET /volume, POST /volume/{name}"""
+
     name: str = Field(description="Name of the volume", examples=["volume1"])
     created: datetime.datetime = Field(description="Creation timestamp of the volume", examples=["2023-10-01T12:00:00"])
     size: VolumeSize = Field(description="Size of the volume in bytes", examples=[1073741824], gt=0)
@@ -38,6 +44,8 @@ class VolumeReadResponse(BaseModel):
 
 
 class VolumeUpdateRequest(BaseModel):
+    """Request type for POST /volume/{name}"""
+
     size: VolumeSize | None = Field(
         default=None, description="New size of the volume in bytes", examples=[2147483648], gt=0
     )
@@ -45,6 +53,8 @@ class VolumeUpdateRequest(BaseModel):
 
 
 class Filesystem(str, Enum):
+    """supported filesystems"""
+
     ext4 = "ext4"
     xfs = "xfs"
     btrfs = "btrfs"
@@ -55,11 +65,15 @@ class Filesystem(str, Enum):
 
 
 class VolumeFormatRequest(BaseModel):
+    """Request type for POST /volume/{name}/mkfs"""
+
     filesystem: Filesystem = Field(default=Filesystem.ext4, description="Make filesystem in the volume")
     label: str | None = Field(default=None, description="Label of filesystem")
 
 
 class PoolStats(BaseModel):
+    """Response type for GET /stats/volume"""
+
     total: int = Field(description="Total size of the pool in bytes", examples=[10737418240])
     used: int = Field(description="Used size of the pool in bytes", examples=[5368709120])
     free: int = Field(description="Free size of the pool in bytes", examples=[5368709120])

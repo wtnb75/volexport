@@ -8,7 +8,7 @@ HomePath = Annotated[Path, AfterValidator(lambda v: v.expanduser())]
 
 
 class ConfigServer(BaseSettings):
-    """Configuration settings for the volexport application."""
+    """Configuration settings for the volexport application. (no default value)"""
 
     model_config = SettingsConfigDict(env_prefix="VOLEXP_", env_file=os.getenv("VOLEXP_ENV_FILE"))
     VG: str = Field(description="Volume Group name")
