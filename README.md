@@ -228,3 +228,11 @@ create volume and mount
     - `iscsiadm -m session -P 3`
         - shows device name at last line
     - volume label if mkfs'ed: `lsblk -f`, `blkid`, etc...
+
+attach/detach command
+(NOTE: it doesn't rollback in error case, just abort process)
+
+- `volexp-client attach-volume --name vol123 --format --mount /mnt`
+    - mkfs + create export + iscsi attach + mount
+- `volexp-client detach-volume --name vol123`
+    - iscsi detach + remove export

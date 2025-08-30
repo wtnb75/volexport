@@ -153,3 +153,153 @@ class TestVolumeAPI(unittest.TestCase):
         self.assertEqual(404, res.status_code)
         self.assertEqual({"detail": "pool not found"}, res.json())
         run.assert_called_once_with(["sudo", "vgdisplay", "--unit", "b", "vg0"], **self.run_basearg)
+
+    @patch("subprocess.run")
+    def test_resize(self, run):
+        noout = MagicMock()
+        tgtadm_show = MagicMock(
+            stdout="""
+Target 1: iqn.def
+    System information:
+        Driver: iscsi
+        State: ready
+    I_T nexus information:
+        I_T nexus: 3
+            Initiator: iqn.1996-04.org.alpinelinux:01:c1f2520715f alias: test1
+            Connection: 0
+                IP Address: 192.168.64.41
+            Connection: 1
+                IP Address: 192.168.64.42
+    LUN information:
+        LUN: 0
+            Type: controller
+            SCSI ID: IET     00010000
+            SCSI SN: beaf10
+            Size: 0 MB, Block size: 1
+            Online: Yes
+            Removable media: No
+            Prevent removal: No
+            Readonly: No
+            SWP: No
+            Thin-provisioning: No
+            Backing store type: null
+            Backing store path: None
+            Backing store flags:
+        LUN: 1
+            Type: disk
+            SCSI ID: IET     00010001
+            SCSI SN: beaf11
+            Size: 10737 MB, Block size: 512
+            Online: Yes
+            Removable media: No
+            Prevent removal: No
+            Readonly: No
+            SWP: No
+            Thin-provisioning: No
+            Backing store type: rdwr
+            Backing store path: /dev/vg0/lv1
+            Backing store flags:
+    Account information:
+        user123
+    ACL information:
+        0.0.0.0/0
+        192.168.64.0/24
+"""
+        )
+        lvdisplay = MagicMock(stdout=self.lvdisplay)
+        run.side_effect = [
+            noout,  # lvresize
+            tgtadm_show,  # tgtadm show target
+            noout,  # tgtadm remove lun
+            noout,  # tgtadm add lun
+            lvdisplay,  # lvdisplay
+        ]
+        expected = {
+            "created": ANY,
+            "name": "lv1",
+            "readonly": False,
+            "size": 68719476736,
+            "used": 1,
+        }
+        res = TestClient(api).post("/volume/lv1", json={"size": 1024})
+        self.assertEqual(200, res.status_code)
+        self.assertEqual(expected, res.json())
+        run.assert_any_call(["sudo", "lvresize", "--size", "1024b", "vg0/lv1", "-y"], **self.run_basearg)
+        run.assert_any_call(
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"], **self.run_basearg
+        )
+        run.assert_any_call(["sudo", "lvdisplay", "--unit", "b", "vg0"], **self.run_basearg)
+
+    @patch("subprocess.run")
+    def test_ro(self, run):
+        noout = MagicMock()
+        lvdisplay = MagicMock(
+            stdout="""
+  --- Logical volume ---
+  LV Path                /dev/vg0/lv1
+  LV Name                lv1
+  VG Name                vg0
+  LV UUID                a3OsbU-WC1S-CfDC-MImV-qnqK-oXi0-mmXdqZ
+  LV Write Access        read only
+  LV Creation host, time base, 2025-08-10 16:48:15 +0900
+  LV Status              available
+  # open                 1
+  LV Size                68719476736 B
+  Current LE             16255
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           252:0
+"""
+        )
+        run.side_effect = [
+            noout,  # lvchange
+            lvdisplay,  # lvdisplay
+        ]
+        expected = {
+            "created": ANY,
+            "name": "lv1",
+            "readonly": True,
+            "size": 68719476736,
+            "used": 1,
+        }
+        res = TestClient(api).post("/volume/lv1", json={"readonly": True})
+        self.assertEqual(200, res.status_code)
+        self.assertEqual(expected, res.json())
+        run.assert_any_call(["sudo", "lvchange", "--permission", "r", "vg0/lv1"], **self.run_basearg)
+        run.assert_any_call(["sudo", "lvdisplay", "--unit", "b", "vg0"], **self.run_basearg)
+
+    @patch("subprocess.run")
+    @patch("shutil.which")
+    def test_mkfs(self, which, run):
+        run.side_effect = [
+            MagicMock(exit_code=0),
+            MagicMock(stdout=self.lvdisplay),
+        ]
+        which.return_value = "/bin/mkfs.ext4"
+        res = TestClient(api).post("/volume/lv1/mkfs", json={"filesystem": "ext4"})
+        self.assertEqual(200, res.status_code)
+        run.assert_any_call(["sudo", "mkfs.ext4", "-L", "lv1", "/dev/vg0/lv1"], **self.run_basearg)
+        run.assert_any_call(["sudo", "lvdisplay", "--unit", "b", "vg0"], **self.run_basearg)
+
+    @patch("subprocess.run")
+    @patch("shutil.which")
+    def test_mkfs_vfat(self, which, run):
+        run.side_effect = [
+            MagicMock(exit_code=0),
+            MagicMock(stdout=self.lvdisplay),
+        ]
+        which.return_value = "/bin/mkfs.ext4"
+        res = TestClient(api).post("/volume/lv1/mkfs", json={"filesystem": "vfat"})
+        self.assertEqual(200, res.status_code)
+        run.assert_any_call(["sudo", "mkfs.vfat", "-n", "lv1", "/dev/vg0/lv1"], **self.run_basearg)
+        run.assert_any_call(["sudo", "lvdisplay", "--unit", "b", "vg0"], **self.run_basearg)
+
+    @patch("subprocess.run")
+    @patch("shutil.which")
+    def test_mkfs_invalid(self, which, run):
+        which.return_value = None
+        res = TestClient(api).post("/volume/lv1/mkfs", json={"filesystem": "vfat"})
+        self.assertEqual(501, res.status_code)
+        run.assert_not_called()
