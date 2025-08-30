@@ -23,6 +23,13 @@ def set_verbose(verbose: Optional[bool]):
 
 
 def verbose_option(func):
+    """set log level:
+
+    - --verbose -> DEBUG
+    - --quiet -> WARNING
+    - (no option) -> INFO
+    """
+
     @functools.wraps(func)
     def wrap(verbose, *args, **kwargs):
         set_verbose(verbose)
@@ -32,6 +39,14 @@ def verbose_option(func):
 
 
 def output_format(func):
+    """set output format:
+
+    - --format json   -> JSON
+    - --format pjson  -> indented JSON
+    - --format yaml   -> YAML
+    - --format pprint -> python pprint.pprint()
+    """
+
     @click.option("--format", type=click.Choice(["json", "pjson", "yaml", "pprint"]), default="json", show_default=True)
     @functools.wraps(func)
     def wrap(format, *args, **kwargs):
@@ -51,6 +66,17 @@ def output_format(func):
 
 
 class SizeType(click.ParamType):
+    """size parameter
+
+    - xxxS (sector) -> x512
+    - xxxK (kilo)   -> x1024
+    - xxxM (mega)   -> x1024x1024
+    - xxxG (giga)   -> x1024x1024x1024
+    - xxxT (tera)   -> x1024x1024x1024x1024
+    - xxxP (peta)   -> x1024x1024x1024x1024x1024
+    - xxxE (exa)    -> x1024x1024x1024x1024x1024x1024
+    """
+
     name = "size"
 
     def convert(self, value: str, param, ctx):
@@ -70,7 +96,10 @@ class SizeType(click.ParamType):
         elif value.endswith("T"):
             factor = factor * Decimal(1024 * 1024 * 1024 * 1204)
             value = value.removesuffix("T")
-        elif value.endswith("E"):
+        elif value.endswith("P"):
             factor = factor * Decimal(1024 * 1024 * 1024 * 1204 * 1024)
+            value = value.removesuffix("P")
+        elif value.endswith("E"):
+            factor = factor * Decimal(1024 * 1024 * 1024 * 1204 * 1024 * 1024)
             value = value.removesuffix("E")
         return int(Decimal(value) * factor)

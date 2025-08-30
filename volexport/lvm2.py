@@ -295,6 +295,7 @@ class LV(Base):
         runcmd(["lvresize", "--size", f"{newsize}b", self.volname, "-y"])
 
     def format_volume(self, filesystem: str, label: str | None):
+        """Format the logical volume to make filesystem"""
         if shutil.which(f"mkfs.{filesystem}") is None:
             _log.error("command does not found: mkfs.%s", filesystem)
             raise NotImplementedError("not supported")

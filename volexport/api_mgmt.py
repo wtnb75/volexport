@@ -17,7 +17,7 @@ def _backup_file(name) -> Path:
     return (dir / name).with_suffix(".backup")
 
 
-@router.post("/mgmt/backup")
+@router.post("/mgmt/backup", description="create tgtd backup")
 def create_backup():
     basename = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     outpath = _backup_file(basename)
@@ -26,13 +26,13 @@ def create_backup():
     return {"name": basename}
 
 
-@router.get("/mgmt/backup")
+@router.get("/mgmt/backup", description="list tgtd backup files")
 def list_backup():
     dir = Path(config.BACKUP_DIR)
     return [{"name": x.with_suffix("").name} for x in sorted(dir.glob("*.backup"))]
 
 
-@router.delete("/mgmt/backup")
+@router.delete("/mgmt/backup", description="delete old tgtd backup file")
 def forget_backup(keep: int = 2):
     dir = Path(config.BACKUP_DIR)
     files = sorted(dir.glob("*.backup"), reverse=True)
@@ -42,7 +42,7 @@ def forget_backup(keep: int = 2):
     return {"status": "OK"}
 
 
-@router.get("/mgmt/backup/{name}")
+@router.get("/mgmt/backup/{name}", description="download tgtd backup file")
 def get_backup(name: str):
     path = _backup_file(name)
     if path.exists():
@@ -50,7 +50,7 @@ def get_backup(name: str):
     raise FileNotFoundError("backup file not found")
 
 
-@router.put("/mgmt/backup/{name}")
+@router.put("/mgmt/backup/{name}", description="upload tgtd backup file")
 async def put_backup(name: str, req: Request):
     path = _backup_file(name)
     if path.exists():
@@ -59,7 +59,7 @@ async def put_backup(name: str, req: Request):
     return {"status": "OK"}
 
 
-@router.post("/mgmt/backup/{name}")
+@router.post("/mgmt/backup/{name}", description="restore tgtd backup")
 def restore_backup(name: str):
     path = _backup_file(name)
     if path.exists():
@@ -68,7 +68,7 @@ def restore_backup(name: str):
     raise FileNotFoundError("backup file not found")
 
 
-@router.delete("/mgmt/backup/{name}")
+@router.delete("/mgmt/backup/{name}", description="delete specified tgtd backup file")
 def delete_backup(name: str):
     path = _backup_file(name)
     if path.exists():
