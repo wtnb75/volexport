@@ -94,7 +94,7 @@ def volume_stats(req):
 @click.option("--size", type=SizeType(), help="volume size", required=True)
 def volume_create(req, name, size):
     """create new volume"""
-    res = req.post("/volume", json={"name": name, "size": size})
+    res = req.post("/volume", json=dict(name=name, size=size))
     res.raise_for_status()
     return res.json()
 
@@ -119,7 +119,7 @@ def volume_read(req, name):
 @click.option("--readonly/--readwrite", help="ro/rw", default=True, show_default=True)
 def volume_readonly(req, name, readonly):
     """set volume readonly/readwrite"""
-    res = req.post(f"/volume/{name}", json={"readonly": readonly})
+    res = req.post(f"/volume/{name}", json=dict(readonly=readonly))
     res.raise_for_status()
     return res.json()
 
@@ -132,7 +132,7 @@ def volume_readonly(req, name, readonly):
 @click.option("--size", type=SizeType(), help="volume size", required=True)
 def volume_resize(req, name, size):
     """resize volume"""
-    res = req.post(f"/volume/{name}", json={"size": size})
+    res = req.post(f"/volume/{name}", json=dict(size=size))
     res.raise_for_status()
     return res.json()
 
@@ -146,7 +146,7 @@ def volume_resize(req, name, size):
 @click.option("--label")
 def volume_mkfs(req, name, filesystem, label):
     """mkfs volume"""
-    res = req.post(f"/volume/{name}/mkfs", json={"filesystem": filesystem, "label": label})
+    res = req.post(f"/volume/{name}/mkfs", json=dict(filesystem=filesystem, label=label))
     res.raise_for_status()
     return res.json()
 
@@ -194,7 +194,7 @@ def export_stats(req):
 @click.option("--acl", multiple=True, help="access control list")
 def export_create(req: VERequest, name, acl, show_command):
     """create new export"""
-    res = req.post("/export", json={"volname": name, "acl": list(acl)})
+    res = req.post("/export", json=dict(volname=name, acl=list(acl)))
     res.raise_for_status()
     if show_command:
         data = res.json()
@@ -234,7 +234,7 @@ def export_read(req, targetname):
 @click.option("--targetname", required=True, help="target name")
 def export_delete(req: VERequest, targetname, force):
     """delete export"""
-    param = {"force": "1"} if force else {}
+    param = dict(force="1") if force else dict()
     res = req.delete(f"/export/{targetname}", params=param)
     res.raise_for_status()
     return res.json()
@@ -316,7 +316,7 @@ def backup_put(req, name, input):
 @click.option("--keep", type=int, default=2, show_default=True)
 def backup_forget(req, keep):
     """forget old backups"""
-    res = req.delete("/mgmt/backup", params={"keep": keep})
+    res = req.delete("/mgmt/backup", params=dict(keep=keep))
     res.raise_for_status()
     return res.json()
 
@@ -387,7 +387,7 @@ def attach_volume(req: VERequest, name, format, mount):
                 addr = ip.ip
             if addr:
                 addrs.append(addr)
-    res = req.post("/export", json={"volname": name, "acl": list(addrs)})
+    res = req.post("/export", json=dict(volname=name, acl=list(addrs)))
     res.raise_for_status()
     data = res.json()
     addrs: list[str] = data["addresses"]
@@ -450,7 +450,7 @@ def detach_volume(req: VERequest, name):
     if portal:
         iscsiadm(m="discoverydb", t="st", p=portal, o="delete")
 
-    final_res = req.delete(f"/export/{targetname}", params={"force": "1"})
+    final_res = req.delete(f"/export/{targetname}", params=dict(force="1"))
     return final_res.json()
 
 

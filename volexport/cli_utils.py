@@ -88,18 +88,18 @@ class SizeType(click.ParamType):
             factor = factor * Decimal(1024)
             value = value.removesuffix("K")
         elif value.endswith("M"):
-            factor = factor * Decimal(1024 * 1024)
+            factor = factor * Decimal(1024**2)
             value = value.removesuffix("M")
         elif value.endswith("G"):
-            factor = factor * Decimal(1024 * 1024 * 1024)
+            factor = factor * Decimal(1024**3)
             value = value.removesuffix("G")
         elif value.endswith("T"):
-            factor = factor * Decimal(1024 * 1024 * 1024 * 1204)
+            factor = factor * Decimal(1024**4)
             value = value.removesuffix("T")
         elif value.endswith("P"):
-            factor = factor * Decimal(1024 * 1024 * 1024 * 1204 * 1024)
+            factor = factor * Decimal(1024**5)
             value = value.removesuffix("P")
         elif value.endswith("E"):
-            factor = factor * Decimal(1024 * 1024 * 1024 * 1204 * 1024 * 1024)
+            factor = factor * Decimal(1024**6)
             value = value.removesuffix("E")
         return int(Decimal(value) * factor)
