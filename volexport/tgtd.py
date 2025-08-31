@@ -6,7 +6,7 @@ import ifaddr
 import tempfile
 from pathlib import Path
 from logging import getLogger
-from typing import Sequence
+from typing import Sequence, Callable, TypedDict
 from .config import config
 from .config2 import config2
 from .util import runcmd
@@ -23,6 +23,11 @@ class Tgtd:
     def parse(self, lines: Sequence[str]):
         """Parse the output of tgtadm"""
 
+        class genline(TypedDict):
+            indent: int
+            key: str
+            value: str | None
+
         def linegen(lines: Sequence[str]):
             for line in lines:
                 indent = len(line) - len(line.lstrip())
@@ -32,9 +37,9 @@ class Tgtd:
                         v = kv[1].strip(" )")
                         if v == "":
                             v = None
-                        yield {"indent": indent, "key": kv[0].strip(), "value": v}
+                        yield genline(indent=indent, key=kv[0].strip(), value=v)
                     elif len(kv) == 1:
-                        yield {"indent": indent, "key": kv[0].strip()}
+                        yield genline(indent=indent, key=kv[0].strip(), value=None)
                 elif ":" in line or "=" in line:
                     kv = line[indent:].split(":", 1)
                     if len(kv) == 1:
@@ -46,9 +51,9 @@ class Tgtd:
                             v = None
                         if k in ("LUN", "I_T nexus", "Connection", "Session"):  # special case
                             k = f"{k} {v}"
-                        yield {"indent": indent, "key": k, "value": v}
+                        yield genline(indent=indent, key=k, value=v)
                 elif len(line[indent:]) != 0:
-                    yield {"indent": indent, "key": line[indent:].strip()}
+                    yield genline(indent=indent, key=line[indent:].strip(), value=None)
 
         res = {}
         levels: list[str] = []
@@ -64,7 +69,7 @@ class Tgtd:
                 if isinstance(target[k], dict):
                     target = target[k]
                 else:
-                    target[k] = {"name": target[k]}
+                    target[k] = dict(name=target[k])
                     target = target[k]
             levels = levels[:level]
             levels.append(node["key"])
@@ -259,6 +264,46 @@ class Tgtd:
             res = runcmd(["tgt-admin", "-c", tf.name, "-e"], root=True)
             return res.stdout
 
+    def _target2export(self, tgtid: str, tgtinfo: dict) -> dict:
+        tgtid = tgtid.removeprefix("Target ")
+        name = tgtinfo["name"]
+        itn = tgtinfo.get("I_T nexus information", {})
+        connected_from = []
+        if itn is not None:
+            addrs = []
+            for itnv in itn.values():
+                addrs.extend([v.get("IP Address") for k, v in itnv.items() if k.startswith("Connection")])
+            connected_from = [
+                {
+                    "address": addrs,
+                    "initiator": x.get("Initiator").split(" ")[0],
+                }
+                for x in itn.values()
+            ]
+        luns = tgtinfo.get("LUN information", {})
+        volumes = []
+        for lun in luns.values():
+            if lun["Type"] == "controller":
+                continue
+            volumes.append(lun["Backing store path"])
+        accounts = list((tgtinfo.get("Account information") or {}).keys())
+        acls = list((tgtinfo.get("ACL information") or {}).keys())
+        return dict(
+            protocol=self.lld,
+            tid=tgtid,
+            targetname=name,
+            connected=connected_from,
+            volumes=volumes,
+            users=accounts,
+            acl=acls,
+        )
+
+    def _find_target(self, fn: Callable):
+        return next(((tgtid, tgt) for tgtid, tgt in self.target_list().items() if fn(tgtid, tgt)), (None, None))
+
+    def _find_export(self, fn: Callable):
+        return next((tgt for tgt in self.export_list() if fn(tgt)), None)
+
     # compound operation
     def export_list(self):
         """List all exports"""
@@ -266,41 +311,15 @@ class Tgtd:
         for tgtid, tgtinfo in self.target_list().items():
             if tgtinfo is None:
                 continue
-            tgtid = tgtid.removeprefix("Target ")
-            name = tgtinfo["name"]
-            itn = tgtinfo.get("I_T nexus information", {})
-            connected_from = []
-            if itn is not None:
-                addrs = []
-                for itnv in itn.values():
-                    addrs.extend([v.get("IP Address") for k, v in itnv.items() if k.startswith("Connection")])
-                connected_from = [
-                    {
-                        "address": addrs,
-                        "initiator": x.get("Initiator").split(" ")[0],
-                    }
-                    for x in itn.values()
-                ]
-            luns = tgtinfo.get("LUN information", {})
-            volumes = []
-            for lun in luns.values():
-                if lun["Type"] == "controller":
-                    continue
-                volumes.append(lun["Backing store path"])
-            accounts = list((tgtinfo.get("Account information") or {}).keys())
-            acls = list((tgtinfo.get("ACL information") or {}).keys())
-            res.append(
-                dict(
-                    protocol=self.lld,
-                    tid=tgtid,
-                    targetname=name,
-                    connected=connected_from,
-                    volumes=volumes,
-                    users=accounts,
-                    acl=acls,
-                )
-            )
+            res.append(self._target2export(tgtid, tgtinfo))
         return res
+
+    def export_read(self, tid):
+        """Read exports"""
+        tgtid, tgtinfo = self._find_target(lambda t, tinfo: int(t.removeprefix("Target ")) == tid)
+        if tgtid is None or tgtinfo is None:
+            raise FileNotFoundError(f"target {tid} not found")
+        return self._target2export(tgtid, tgtinfo)
 
     def export_volume(self, filename: str, acl: list[str], readonly: bool = False):
         """Export a volume by its filename with specified ACL and read-only option"""
@@ -341,105 +360,93 @@ class Tgtd:
             acl=acl,
         )
 
+    def _refresh_lun(self, tid: int, lun: int, luninfo: dict):
+        pathname = luninfo["Backing store path"]
+        readonly = luninfo["Readonly"] in ("Yes",)
+        opts = {}
+        if config.TGT_BSOPTS:
+            opts["bsopts"] = config.TGT_BSOPTS
+        if config.TGT_BSOFLAGS:
+            opts["bsoflags"] = config.TGT_BSOFLAGS
+        if readonly:
+            opts["params"] = dict(readonly=1)
+        self.lun_delete(tid=tid, lun=lun)
+        self.lun_create(tid=tid, lun=lun, path=pathname, bstype=config.TGT_BSTYPE, **opts)
+
     def refresh_volume(self, tid: int, lun: int):
-        for tgtid, tgtinfo in self.target_list().items():
-            if tgtinfo is None:
+        tgtid, tgtinfo = self._find_target(lambda t, info: int(t.removeprefix("Target ")) == tid)
+        if tgtid is None or tgtinfo is None:
+            raise FileNotFoundError(f"target {tid} not found")
+        luns = tgtinfo.get("LUN information", {})
+        for lunid, luninfo in luns.items():
+            lunid = lunid.removeprefix("LUN ")
+            if int(lunid) != lun:
                 continue
-            tgtid = tgtid.removeprefix("Target ")
-            if int(tgtid) != tid:
-                continue
-            luns = tgtinfo.get("LUN information", {})
-            for lunid, luninfo in luns.items():
-                lunid = lunid.removeprefix("LUN ")
-                if int(lunid) != lun:
-                    continue
-                _log.info("found lun: tid=%s, lun=%s, info=%s", tgtid, lunid, luninfo)
-                pathname = luninfo["Backing store path"]
-                readonly = luninfo["Readonly"] in ("Yes",)
-                opts = {}
-                if config.TGT_BSOPTS:
-                    opts["bsopts"] = config.TGT_BSOPTS
-                if config.TGT_BSOFLAGS:
-                    opts["bsoflags"] = config.TGT_BSOFLAGS
-                if readonly:
-                    opts["params"] = dict(readonly=1)
-                self.lun_delete(tid=tid, lun=lun)
-                self.lun_create(tid=tid, lun=lun, path=pathname, bstype=config.TGT_BSTYPE, **opts)
-                return
+            _log.info("found lun: tid=%s, lun=%s, info=%s", tgtid, lunid, luninfo)
+            self._refresh_lun(tid, lun, luninfo)
+            break
+        else:
+            raise FileNotFoundError(f"lun {lun} not found")
 
     def refresh_volume_bypath(self, pathname: str):
+        found = False
         for tgtid, tgtinfo in self.target_list().items():
             if tgtinfo is None:
                 continue
-            tgtid = tgtid.removeprefix("Target ")
+            tid = int(tgtid.removeprefix("Target "))
             luns = tgtinfo.get("LUN information", {})
             for lunid, luninfo in luns.items():
-                lunid = lunid.removeprefix("LUN ")
+                lun = int(lunid.removeprefix("LUN "))
                 bs_pathname = luninfo["Backing store path"]
                 if bs_pathname != pathname:
                     continue
-                _log.info("found lun: tid=%s, lun=%s, info=%s", tgtid, lunid, luninfo)
-                readonly = luninfo["Readonly"] in ("Yes",)
-                opts = {}
-                if config.TGT_BSOPTS:
-                    opts["bsopts"] = config.TGT_BSOPTS
-                if config.TGT_BSOFLAGS:
-                    opts["bsoflags"] = config.TGT_BSOFLAGS
-                if readonly:
-                    opts["params"] = dict(readonly=1)
-                self.lun_delete(tid=int(tgtid), lun=int(lunid))
-                self.lun_create(tid=int(tgtid), lun=int(lunid), path=pathname, bstype=config.TGT_BSTYPE, **opts)
+                _log.info("found lun: tid=%s, lun=%s, info=%s", tid, lun, luninfo)
+                self._refresh_lun(tid, lun, luninfo)
+                found = True
+        if not found:
+            raise FileNotFoundError(f"volume {pathname} is not exported")
 
     def get_export_bypath(self, filename: str):
         """Get export details by volume path"""
-        res = self.export_list()
-        for tgt in res:
-            if filename in tgt.get("volumes"):
-                return tgt
+        return self._find_export(lambda tgt: filename in tgt.get("volumes"))
 
     def get_export_byname(self, targetname: str):
         """Get export details by target name"""
-        res = self.export_list()
-        for tgt in res:
-            if targetname == tgt.get("targetname"):
-                return tgt
+        return self._find_export(lambda tgt: targetname == tgt.get("targetname"))
 
     def unexport_volume(self, targetname: str, force: bool = False):
         """Unexport a volume by target name"""
-        info = self.target_list()
-        for tgtidstr, data in info.items():
-            if data.get("name") != targetname:
-                continue
-            tgtid = int(tgtidstr.split()[-1])
-            itn = data.get("I_T nexus information")
-            if itn is not None:
-                _log.warning("client connected: %s", itn)
-                if not force:
-                    addrs = [x.get("Connection", {}).get("IP Address") for x in itn.values()]
-                    raise FileExistsError(f"client connected: {addrs}")
-            try:
-                accounts = data.get("Account information", {})
-                if accounts is not None:
-                    for acct in accounts.keys():
-                        self.account_unbind(tid=tgtid, user=acct)
-                        self.account_delete(user=acct)
-                acls = data.get("ACL information", {})
-                if acls is not None:
-                    for acl in acls.keys():
-                        if acl:
-                            self.target_unbind_address(tid=tgtid, addr=acl)
-                luns = data.get("LUN information", {})
-                if luns is not None:
-                    for lun in sorted(
-                        data.get("LUN information", {}).values(), key=lambda f: int(f["name"]), reverse=True
-                    ):
-                        if lun.get("Type") != "controller":
-                            lunid = int(lun["name"])
-                            self.lun_delete(tid=tgtid, lun=lunid)
-            except Exception:
-                if not force:
-                    raise
-            self.target_delete(tid=tgtid, force=force)
-            break
-        else:
+        tgtid, tgtinfo = self._find_target(lambda id, tgt: tgt.get("name") == targetname)
+        if tgtid is None or tgtinfo is None:
             raise FileNotFoundError(f"target not found: {targetname}")
+        tgtid = int(tgtid.split()[-1])
+        itn = tgtinfo.get("I_T nexus information")
+        if itn is not None:
+            _log.warning("client connected: %s", itn)
+            if not force:
+                addrs = [x.get("Connection", {}).get("IP Address") for x in itn.values()]
+                raise FileExistsError(f"client connected: {addrs}")
+        try:
+            accounts = tgtinfo.get("Account information", {})
+            if accounts is not None:
+                for acct in accounts.keys():
+                    self.account_unbind(tid=tgtid, user=acct)
+                    self.account_delete(user=acct)
+            acls = tgtinfo.get("ACL information", {})
+            if acls is not None:
+                for acl in acls.keys():
+                    if acl:
+                        self.target_unbind_address(tid=tgtid, addr=acl)
+            luns = tgtinfo.get("LUN information", {})
+            if luns is not None:
+                for lun in sorted(
+                    tgtinfo.get("LUN information", {}).values(), key=lambda f: int(f["name"]), reverse=True
+                ):
+                    if lun.get("Type") != "controller":
+                        lunid = int(lun["name"])
+                        self.lun_delete(tid=tgtid, lun=lunid)
+        except Exception as e:
+            if not force:
+                raise
+            _log.info("ignore error %s: force delete", e)
+        self.target_delete(tid=tgtid, force=force)
