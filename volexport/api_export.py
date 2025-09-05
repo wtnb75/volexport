@@ -54,8 +54,11 @@ def _fixpath(data: dict) -> dict:
 
 
 @router.get("/export", description="List all exports")
-def list_export() -> list[ExportReadResponse]:
-    return [ExportReadResponse.model_validate(_fixpath(x)) for x in Tgtd().export_list()]
+def list_export(volume: str | None = None) -> list[ExportReadResponse]:
+    res = [ExportReadResponse.model_validate(_fixpath(x)) for x in Tgtd().export_list()]
+    if volume:
+        res = [x for x in res if volume in x.volumes]
+    return res
 
 
 @router.post("/export", description="Create a new export")

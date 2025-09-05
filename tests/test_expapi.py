@@ -114,6 +114,40 @@ Target 1: iqn.def
         )
 
     @patch("subprocess.run")
+    def test_exportlist_query(self, run):
+        run.return_value.exit_code = 0
+        run.return_value.stdout = self.target_show_str
+        res = TestClient(api).get("/export", params=dict(volume="vol02"))
+        self.assertEqual(200, res.status_code)
+        self.assertEqual(
+            [
+                dict(
+                    protocol="iscsi",
+                    tid=1,
+                    targetname="iqn.def",
+                    connected=[
+                        dict(
+                            initiator="iqn.1996-04.org.alpinelinux:01:c1f2520715f",
+                            address=["192.168.64.41", "192.168.64.42"],
+                        )
+                    ],
+                    acl=["0.0.0.0/0", "192.168.64.0/24"],
+                    users=["user123"],
+                    volumes=["vol01", "vol02"],
+                )
+            ],
+            res.json(),
+        )
+
+    @patch("subprocess.run")
+    def test_exportlist_query_empty(self, run):
+        run.return_value.exit_code = 0
+        run.return_value.stdout = self.target_show_str
+        res = TestClient(api).get("/export", params=dict(volume="vol03"))
+        self.assertEqual(200, res.status_code)
+        self.assertEqual([], res.json())
+
+    @patch("subprocess.run")
     def test_exportread(self, run):
         run.return_value.exit_code = 0
         run.return_value.stdout = self.target_show_str
