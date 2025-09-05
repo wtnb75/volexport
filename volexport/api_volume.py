@@ -81,17 +81,17 @@ class PoolStats(BaseModel):
 
 
 @router.get("/volume", description="List all volumes")
-def list_volume():
+def list_volume() -> list[VolumeReadResponse]:
     return [VolumeReadResponse.model_validate(x) for x in LV(config2.VG).volume_list()]
 
 
 @router.post("/volume", description="Create a new volume")
-def create_volume(arg: VolumeCreateRequest):
+def create_volume(arg: VolumeCreateRequest) -> VolumeCreateResponse:
     return VolumeCreateResponse.model_validate(LV(config2.VG, arg.name).create(size=arg.size))
 
 
 @router.get("/volume/{name}", description="Read volume details by name")
-def read_volume(name):
+def read_volume(name) -> VolumeReadResponse:
     res = LV(config2.VG, name).volume_read()
     if res is None:
         raise HTTPException(status_code=404, detail="volume not found")

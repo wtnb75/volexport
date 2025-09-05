@@ -321,7 +321,9 @@ class Tgtd:
             raise FileNotFoundError(f"target {tid} not found")
         return self._target2export(tgtid, tgtinfo)
 
-    def export_volume(self, filename: str, acl: list[str], readonly: bool = False):
+    def export_volume(
+        self, filename: str, acl: list[str], readonly: bool = False, user: str | None = None, passwd: str | None = None
+    ):
         """Export a volume by its filename with specified ACL and read-only option"""
         assert Path(filename).exists()
         iqname = secrets.token_hex(10)
@@ -332,8 +334,10 @@ class Tgtd:
         tid = max_tgt + 1
         lun = 1
         name = f"{config.IQN_BASE}:{iqname}"
-        user = secrets.token_hex(10)
-        passwd = secrets.token_hex(20)
+        if not user:
+            user = secrets.token_hex(10)
+        if not passwd:
+            passwd = secrets.token_hex(20)
         self.target_create(tid=tid, name=name)
         opts = {}
         if config.TGT_BSOPTS:

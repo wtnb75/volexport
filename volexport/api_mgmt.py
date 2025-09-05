@@ -18,7 +18,7 @@ def _backup_file(name) -> Path:
 
 
 @router.post("/mgmt/backup", description="create tgtd backup")
-def create_backup():
+def create_backup() -> dict[str, str]:
     basename = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     outpath = _backup_file(basename)
     outpath.write_text(Tgtd().dump())
@@ -27,13 +27,13 @@ def create_backup():
 
 
 @router.get("/mgmt/backup", description="list tgtd backup files")
-def list_backup():
+def list_backup() -> list[dict[str, str]]:
     dir = Path(config.BACKUP_DIR)
     return [{"name": x.with_suffix("").name} for x in sorted(dir.glob("*.backup"))]
 
 
 @router.delete("/mgmt/backup", description="delete old tgtd backup file")
-def forget_backup(keep: int = 2):
+def forget_backup(keep: int = 2) -> dict[str, str]:
     dir = Path(config.BACKUP_DIR)
     files = sorted(dir.glob("*.backup"), reverse=True)
     for f in files[keep:]:
@@ -43,7 +43,7 @@ def forget_backup(keep: int = 2):
 
 
 @router.get("/mgmt/backup/{name}", description="download tgtd backup file")
-def get_backup(name: str):
+def get_backup(name: str) -> PlainTextResponse:
     path = _backup_file(name)
     if path.exists():
         return PlainTextResponse(path.read_text())
@@ -51,7 +51,7 @@ def get_backup(name: str):
 
 
 @router.put("/mgmt/backup/{name}", description="upload tgtd backup file")
-async def put_backup(name: str, req: Request):
+async def put_backup(name: str, req: Request) -> dict[str, str]:
     path = _backup_file(name)
     if path.exists():
         raise FileExistsError("backup already exists")
@@ -60,7 +60,7 @@ async def put_backup(name: str, req: Request):
 
 
 @router.post("/mgmt/backup/{name}", description="restore tgtd backup")
-def restore_backup(name: str):
+def restore_backup(name: str) -> dict[str, str]:
     path = _backup_file(name)
     if path.exists():
         Tgtd().restore(path.read_text())
@@ -69,7 +69,7 @@ def restore_backup(name: str):
 
 
 @router.delete("/mgmt/backup/{name}", description="delete specified tgtd backup file")
-def delete_backup(name: str):
+def delete_backup(name: str) -> dict[str, str]:
     path = _backup_file(name)
     if path.exists():
         _log.info("delete backup: %s", path)
