@@ -114,6 +114,40 @@ Target 1: iqn.def
         )
 
     @patch("subprocess.run")
+    def test_exportlist_query(self, run):
+        run.return_value.exit_code = 0
+        run.return_value.stdout = self.target_show_str
+        res = TestClient(api).get("/export", params=dict(volume="vol02"))
+        self.assertEqual(200, res.status_code)
+        self.assertEqual(
+            [
+                dict(
+                    protocol="iscsi",
+                    tid=1,
+                    targetname="iqn.def",
+                    connected=[
+                        dict(
+                            initiator="iqn.1996-04.org.alpinelinux:01:c1f2520715f",
+                            address=["192.168.64.41", "192.168.64.42"],
+                        )
+                    ],
+                    acl=["0.0.0.0/0", "192.168.64.0/24"],
+                    users=["user123"],
+                    volumes=["vol01", "vol02"],
+                )
+            ],
+            res.json(),
+        )
+
+    @patch("subprocess.run")
+    def test_exportlist_query_empty(self, run):
+        run.return_value.exit_code = 0
+        run.return_value.stdout = self.target_show_str
+        res = TestClient(api).get("/export", params=dict(volume="vol03"))
+        self.assertEqual(200, res.status_code)
+        self.assertEqual([], res.json())
+
+    @patch("subprocess.run")
     def test_exportread(self, run):
         run.return_value.exit_code = 0
         run.return_value.stdout = self.target_show_str
@@ -216,6 +250,115 @@ Target 1: iqn.def
                 ANY,
                 "--password",
                 ANY,
+            ],
+            **self.run_basearg,
+        )
+        run.assert_any_call(
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "account", "--op", "bind", "--tid", "2", "--user", ANY],
+            **self.run_basearg,
+        )
+        run.assert_any_call(
+            [
+                "sudo",
+                "tgtadm",
+                "--lld",
+                "iscsi",
+                "--mode",
+                "target",
+                "--op",
+                "bind",
+                "--tid",
+                "2",
+                "--initiator-address",
+                "1.1.1.1/32",
+            ],
+            **self.run_basearg,
+        )
+        run.assert_any_call(
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "portal", "--op", "show"], **self.run_basearg
+        )
+
+    @patch("subprocess.run")
+    @patch("volexport.tgtd.Path")
+    def test_exportcreate_auth(self, path, run):
+        path.return_value.exists.return_value = True
+        listvol_str = """
+Target 1: iqn.def
+    System information:
+        Driver: iscsi
+        State: ready
+"""
+        listvol = MagicMock(exit_code=0, stdout=listvol_str)
+        simple_ok = MagicMock(exit_code=0, stdout="")
+        portal_list = MagicMock(exit_code=0, stdout="Portal 0.0.0.0:3260,1")
+        run.side_effect = [
+            listvol,
+            simple_ok,  # create target
+            simple_ok,  # create lun
+            simple_ok,  # update lun
+            simple_ok,  # create account
+            simple_ok,  # bind account
+            simple_ok,  # setup ACL
+            portal_list,
+        ]
+        expected = {
+            "protocol": "iscsi",
+            "addresses": [],
+            "targetname": ANY,
+            "tid": 2,
+            "user": ANY,
+            "passwd": ANY,
+            "lun": 1,
+            "acl": ["1.1.1.1/32"],
+        }
+        res = TestClient(api).post(
+            "/export", json={"volname": "vol00", "acl": ["1.1.1.1/32"], "user": "user123", "passwd": "pass123"}
+        )
+        self.assertEqual(200, res.status_code)
+        self.assertEqual(expected, res.json())
+        self.assertEqual(8, run.call_count)
+        run.assert_any_call(
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"], **self.run_basearg
+        )
+        run.assert_any_call(
+            ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "new", "--tid", "2", "--targetname", ANY],
+            **self.run_basearg,
+        )
+        run.assert_any_call(
+            [
+                "sudo",
+                "tgtadm",
+                "--lld",
+                "iscsi",
+                "--mode",
+                "logicalunit",
+                "--op",
+                "new",
+                "--tid",
+                "2",
+                "--lun",
+                "1",
+                "--backing-store",
+                "/dev/vg0/vol00",
+                "--bstype",
+                "rdwr",
+            ],
+            **self.run_basearg,
+        )
+        run.assert_any_call(
+            [
+                "sudo",
+                "tgtadm",
+                "--lld",
+                "iscsi",
+                "--mode",
+                "account",
+                "--op",
+                "new",
+                "--user",
+                "user123",
+                "--password",
+                "pass123",
             ],
             **self.run_basearg,
         )

@@ -1,6 +1,7 @@
 import shlex
 import datetime
 import shutil
+import string
 from subprocess import CalledProcessError
 from abc import abstractmethod
 from .util import runcmd
@@ -53,8 +54,11 @@ def runparse(cmd: list[str], indent: int, width: int) -> list[dict]:
 
 
 class Base:
+    ACCEPT_CHARS = string.ascii_letters + string.digits + "-_"
+
     def __init__(self, name: str | None = None):
-        assert name is None or "/" not in name
+        if name is not None and any(x not in self.ACCEPT_CHARS for x in name):
+            raise ValueError(f"invalid name: {name}")
         self.name = name
 
     def find_by(self, data: list[dict], keyname: str, value: str):

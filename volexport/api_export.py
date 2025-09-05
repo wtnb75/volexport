@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 from .config2 import config2
 from .tgtd import Tgtd
 from .lvm2 import LV
@@ -11,6 +11,8 @@ class ExportRequest(BaseModel):
     volname: str = Field(description="Volume name to export", examples=["volume1"])
     acl: list[str] | None = Field(description="Source IP Addresses to allow access")
     readonly: bool = Field(default=False, description="read-only if true", examples=[True, False])
+    user: str | None = Field(default=None, description="user name for access. auto-generate if null")
+    passwd: SecretStr | None = Field(default=None, description="password for access. auto-generate if null")
 
 
 class ExportResponse(BaseModel):
@@ -19,7 +21,7 @@ class ExportResponse(BaseModel):
     targetname: str = Field(description="target name", examples=["iqn.2025-08.volexport:abcde"])
     tid: int = Field(description="target ID")
     user: str = Field(description="user name for access", examples=["admin"])
-    passwd: str = Field(description="password for access", examples=["password123"])
+    passwd: SecretStr = Field(description="password for access", examples=["password123"])
     lun: int = Field(description="LUN number", examples=[1, 2, 3])
     acl: list[str] = Field(description="Access Control List (ACL) for the export")
 
@@ -52,8 +54,11 @@ def _fixpath(data: dict) -> dict:
 
 
 @router.get("/export", description="List all exports")
-def list_export() -> list[ExportReadResponse]:
-    return [ExportReadResponse.model_validate(_fixpath(x)) for x in Tgtd().export_list()]
+def list_export(volume: str | None = None) -> list[ExportReadResponse]:
+    res = [ExportReadResponse.model_validate(_fixpath(x)) for x in Tgtd().export_list()]
+    if volume:
+        res = [x for x in res if volume in x.volumes]
+    return res
 
 
 @router.post("/export", description="Create a new export")
@@ -62,7 +67,15 @@ def create_export(req: Request, arg: ExportRequest) -> ExportResponse:
     if not arg.acl:
         assert req.client is not None
         arg.acl = [req.client.host]
-    return ExportResponse.model_validate(Tgtd().export_volume(filename=filename, acl=arg.acl, readonly=arg.readonly))
+    return ExportResponse.model_validate(
+        Tgtd().export_volume(
+            filename=filename,
+            acl=arg.acl,
+            readonly=arg.readonly,
+            user=arg.user,
+            passwd=arg.passwd.get_secret_value() if arg.passwd else None,
+        )
+    )
 
 
 @router.get("/export/{name}", description="Read export details by name or TID")

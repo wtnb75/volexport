@@ -145,3 +145,9 @@ tasks:
       - task: vm:stop
       - task: vm:delete
       - task: vm:delete:disk
+
+  boot:mock:
+    desc: boot mock server
+    cmds:
+      - task: apispec
+      - docker run -p 3000:3000 -v {{.TASK_DIR}}/volexport-api.yaml:/w/apispec.yaml:ro stoplight/prism mock -h 0.0.0.0 -p 3000 /w/apispec.yaml

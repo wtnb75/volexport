@@ -298,8 +298,12 @@ Target 1: iqn.def
 
     @patch("subprocess.run")
     @patch("shutil.which")
-    def test_mkfs_invalid(self, which, run):
+    def test_mkfs_invalid_mkfscmd(self, which, run):
         which.return_value = None
         res = TestClient(api).post("/volume/lv1/mkfs", json={"filesystem": "vfat"})
         self.assertEqual(501, res.status_code)
         run.assert_not_called()
+
+    def test_mkfs_invalid_name(self):
+        res = TestClient(api).post("/volume/lv1!2/mkfs", json={"filesystem": "vfat"})
+        self.assertEqual(400, res.status_code)
