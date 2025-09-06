@@ -17,6 +17,7 @@ class Config(BaseSettings):
     TGT_BSOPTS: str | None = Field(default=None, description="Additional options for block storage")
     TGT_BSOFLAGS: str | None = Field(default=None, description="Additional flags for block storage")
     LVM_BIN: str | None = Field(default=None, description="Path to lvm binary")
+    LVM_THINPOOL: str | None = Field(default=None, description="LVM2 thinpool")
     IQN_BASE: str = Field(default="iqn.2025-08.com.github.wtnb75", description="Base IQN for iSCSI targets")
     CMD_TIMEOUT: float = Field(default=10.0, description="Timeout for commands in seconds")
     BACKUP_DIR: str = Field(default="/tmp", description="backup directory")

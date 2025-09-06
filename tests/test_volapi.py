@@ -62,8 +62,24 @@ class TestVolumeAPI(unittest.TestCase):
   Block device           252:1
     """
     volume_info = [
-        dict(name="lv1", created="2025-08-10T16:48:15+09:00", size=68719476736, used=1, readonly=False),
-        dict(name="lv2", created="2025-08-12T16:48:15+09:00", size=20000000000, used=0, readonly=False),
+        dict(
+            name="lv1",
+            created="2025-08-10T16:48:15+09:00",
+            size=68719476736,
+            used=1,
+            readonly=False,
+            thin=False,
+            parent=None,
+        ),
+        dict(
+            name="lv2",
+            created="2025-08-12T16:48:15+09:00",
+            size=20000000000,
+            used=0,
+            readonly=False,
+            thin=False,
+            parent=None,
+        ),
     ]
 
     @patch("subprocess.run")
@@ -82,7 +98,7 @@ class TestVolumeAPI(unittest.TestCase):
         res = TestClient(api).get("/volume/lv2")
         self.assertEqual(200, res.status_code)
         self.assertEqual(self.volume_info[1], res.json())
-        run.assert_called_once_with(["sudo", "lvdisplay", "--unit", "b", "vg0"], **self.run_basearg)
+        run.assert_called_once_with(["sudo", "lvdisplay", "--unit", "b", "vg0/lv2"], **self.run_basearg)
 
     @patch("subprocess.run")
     def test_readvol_notfound(self, run):
@@ -91,7 +107,7 @@ class TestVolumeAPI(unittest.TestCase):
         res = TestClient(api).get("/volume/not-found")
         self.assertEqual(404, res.status_code)
         self.assertEqual({"detail": "volume not found"}, res.json())
-        run.assert_called_once_with(["sudo", "lvdisplay", "--unit", "b", "vg0"], **self.run_basearg)
+        run.assert_called_once_with(["sudo", "lvdisplay", "--unit", "b", "vg0/not-found"], **self.run_basearg)
 
     def test_createvol_sector(self):
         res = TestClient(api).post("/volume", json={"name": "volname1", "size": 12345})
@@ -113,7 +129,7 @@ class TestVolumeAPI(unittest.TestCase):
         res = TestClient(api).delete("/volume/volname1")
         self.assertEqual(200, res.status_code)
         self.assertEqual({}, res.json())
-        run.assert_called_once_with(["sudo", "lvremove", "vg0/volname1", "-y"], **self.run_basearg)
+        run.assert_called_once_with(["sudo", "lvremove", "vg0/volname1", "--yes"], **self.run_basearg)
 
     @patch("subprocess.run")
     def test_statsvol(self, run):
@@ -220,15 +236,17 @@ Target 1: iqn.def
             "readonly": False,
             "size": 68719476736,
             "used": 1,
+            "thin": False,
+            "parent": None,
         }
         res = TestClient(api).post("/volume/lv1", json={"size": 1024})
         self.assertEqual(200, res.status_code)
         self.assertEqual(expected, res.json())
-        run.assert_any_call(["sudo", "lvresize", "--size", "1024b", "vg0/lv1", "-y"], **self.run_basearg)
+        run.assert_any_call(["sudo", "lvresize", "--size", "1024b", "vg0/lv1", "--yes"], **self.run_basearg)
         run.assert_any_call(
             ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"], **self.run_basearg
         )
-        run.assert_any_call(["sudo", "lvdisplay", "--unit", "b", "vg0"], **self.run_basearg)
+        run.assert_any_call(["sudo", "lvdisplay", "--unit", "b", "vg0/lv1"], **self.run_basearg)
 
     @patch("subprocess.run")
     def test_ro(self, run):
@@ -263,12 +281,14 @@ Target 1: iqn.def
             "readonly": True,
             "size": 68719476736,
             "used": 1,
+            "thin": False,
+            "parent": None,
         }
         res = TestClient(api).post("/volume/lv1", json={"readonly": True})
         self.assertEqual(200, res.status_code)
         self.assertEqual(expected, res.json())
         run.assert_any_call(["sudo", "lvchange", "--permission", "r", "vg0/lv1"], **self.run_basearg)
-        run.assert_any_call(["sudo", "lvdisplay", "--unit", "b", "vg0"], **self.run_basearg)
+        run.assert_any_call(["sudo", "lvdisplay", "--unit", "b", "vg0/lv1"], **self.run_basearg)
 
     @patch("subprocess.run")
     @patch("shutil.which")
@@ -281,7 +301,7 @@ Target 1: iqn.def
         res = TestClient(api).post("/volume/lv1/mkfs", json={"filesystem": "ext4"})
         self.assertEqual(200, res.status_code)
         run.assert_any_call(["sudo", "mkfs.ext4", "-L", "lv1", "/dev/vg0/lv1"], **self.run_basearg)
-        run.assert_any_call(["sudo", "lvdisplay", "--unit", "b", "vg0"], **self.run_basearg)
+        run.assert_any_call(["sudo", "lvdisplay", "--unit", "b", "vg0/lv1"], **self.run_basearg)
 
     @patch("subprocess.run")
     @patch("shutil.which")
@@ -294,7 +314,7 @@ Target 1: iqn.def
         res = TestClient(api).post("/volume/lv1/mkfs", json={"filesystem": "vfat"})
         self.assertEqual(200, res.status_code)
         run.assert_any_call(["sudo", "mkfs.vfat", "-n", "lv1", "/dev/vg0/lv1"], **self.run_basearg)
-        run.assert_any_call(["sudo", "lvdisplay", "--unit", "b", "vg0"], **self.run_basearg)
+        run.assert_any_call(["sudo", "lvdisplay", "--unit", "b", "vg0/lv1"], **self.run_basearg)
 
     @patch("subprocess.run")
     @patch("shutil.which")

@@ -4,6 +4,7 @@ from enum import Enum
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, AfterValidator
 from .config2 import config2
+from .config import config
 from .lvm2 import LV, VG
 from .tgtd import Tgtd
 
@@ -41,6 +42,8 @@ class VolumeReadResponse(BaseModel):
     size: VolumeSize = Field(description="Size of the volume in bytes", examples=[1073741824], gt=0)
     used: int = Field(description="in-use count", examples=[0, 1])
     readonly: bool = Field(description="true if read-only", examples=[True, False])
+    thin: bool = Field(description="true if thin volume", examples=[True, False])
+    parent: str | None = Field(description="parent volname if snapshot")
 
 
 class VolumeUpdateRequest(BaseModel):
@@ -71,6 +74,13 @@ class VolumeFormatRequest(BaseModel):
     label: str | None = Field(default=None, description="Label of filesystem")
 
 
+class SnapshotCreateRequest(BaseModel):
+    """Request type for POST /volume/{name}/snapshot"""
+
+    name: str = Field(description="Name of snapshot volume", examples=["snap001", "snap002"])
+    size: int | None = Field(default=None, description="Size of snapshot CoW (ignore if using thinpool)")
+
+
 class PoolStats(BaseModel):
     """Response type for GET /stats/volume"""
 
@@ -87,6 +97,10 @@ def list_volume() -> list[VolumeReadResponse]:
 
 @router.post("/volume", description="Create a new volume")
 def create_volume(arg: VolumeCreateRequest) -> VolumeCreateResponse:
+    if config.LVM_THINPOOL:
+        return VolumeCreateResponse.model_validate(
+            LV(config2.VG, arg.name).create_thin(size=arg.size, thinpool=config.LVM_THINPOOL)
+        )
     return VolumeCreateResponse.model_validate(LV(config2.VG, arg.name).create(size=arg.size))
 
 
@@ -101,6 +115,40 @@ def read_volume(name) -> VolumeReadResponse:
 @router.delete("/volume/{name}", description="Delete a volume by name")
 def delete_volume(name) -> dict:
     LV(config2.VG, name).delete()
+    return {}
+
+
+@router.post("/volume/{name}/snapshot", description="Create snapshot")
+def create_snapshot(name, arg: SnapshotCreateRequest) -> VolumeReadResponse:
+    if config.LVM_THINPOOL:
+        res = LV(config2.VG, arg.name).create_thinsnap(parent=name)
+        return VolumeReadResponse.model_validate(res)
+    assert arg.size
+    res = LV(config2.VG, arg.name).create_snapshot(size=arg.size, parent=name)
+    return VolumeReadResponse.model_validate(res)
+
+
+@router.get("/volume/{name}/snapshot", description="List snapshot")
+def list_snapshot(name) -> list[VolumeReadResponse]:
+    return [VolumeReadResponse.model_validate(x) for x in LV(config2.VG).volume_list() if x.get("parent") == name]
+
+
+@router.get("/volume/{name}/snapshot/{snapname}", description="Read snapshot")
+def read_snapshot(name, snapname) -> VolumeReadResponse:
+    # check if name is parent
+    lv = LV(config2.VG, snapname)
+    if lv.get_parent() != name:
+        raise HTTPException(status_code=404, detail="volume not found")
+    res = LV(config2.VG, snapname).volume_read()
+    if res is None:
+        raise HTTPException(status_code=404, detail="volume not found")
+    return VolumeReadResponse.model_validate(res)
+
+
+@router.delete("/volume/{name}/snapshot/{snapname}", description="Delete snapshot")
+def delete_snapshot(name, snapname) -> dict:
+    # check if name is parent
+    LV(config2.VG, snapname).delete()
     return {}
 
 
