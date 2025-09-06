@@ -17,6 +17,7 @@ def parse(input: Sequence[str], indent: int, width: int) -> list[dict]:
     """Parse LVM command output"""
     res = []
     ent = {}
+    prevname: str | None = None
     for i in input:
         if len(i) < indent:
             _log.debug("short line: %s", i)
@@ -39,7 +40,11 @@ def parse(input: Sequence[str], indent: int, width: int) -> list[dict]:
             continue
         name = i[indent : indent + width].strip()
         val = i[indent + width + 1 :].strip()
-        ent[name] = val
+        if not name:
+            ent[prevname] += " " + val
+        else:
+            ent[name] = val
+            prevname = name
     if ent:
         res.append(ent)
     return res
@@ -118,7 +123,7 @@ class PV(Base):
     @override
     def delete(self) -> None:
         assert self.name is not None
-        runcmd(["pvremove", self.name, "-y"], True)
+        runcmd(["pvremove", self.name, "--yes"], True)
 
     @override
     def scan(self) -> list[dict]:
@@ -153,7 +158,7 @@ class VG(Base):
     @override
     def delete(self) -> None:
         assert self.name is not None
-        runcmd(["vgremove", self.name, "-y"], True)
+        runcmd(["vgremove", self.name, "--yes"], True)
 
     @override
     def scan(self) -> list[dict]:
@@ -189,10 +194,12 @@ class LV(Base):
     def get(self) -> dict | None:
         if self.name is None:
             return None
-        return self.find_by(self.getlist(), "LV Name", self.name)
+        return self.find_by(self.getlist(self.name), "LV Name", self.name)
 
     @override
-    def getlist(self) -> list[dict]:
+    def getlist(self, volname: str | None = None) -> list[dict]:
+        if volname:
+            return runparse(["lvdisplay", "--unit", "b", f"{self.vgname}/{volname}"], 2, 22)
         return runparse(["lvdisplay", "--unit", "b", self.vgname], 2, 22)
 
     @override
@@ -208,73 +215,100 @@ class LV(Base):
                 raise InvalidArgument(f"invalid size: {size}")
             raise
 
-    def create_snapshot(self, size: int, parent: str) -> dict:
+    def create_snapshot(self, size: int, parent: str) -> dict | None:
         """Create a snapshot of a logical volume"""
         assert self.name is not None
         runcmd(["lvcreate", "--snapshot", "--size", f"{size}b", "--name", self.name, f"/dev/{self.vgname}/{parent}"])
-        return dict(name=self.name, size=size, device=self.volume_vol2path())
+        return self.volume_read()
 
     def create_thinpool(self, size: int) -> dict:
         """Create a thin pool logical volume"""
         assert self.name is not None
-        runcmd(["lvcreate", "--thinpool", self.name, "-L", f"{size}b", self.vgname])
+        runcmd(["lvcreate", "--thinpool", self.name, "--size", f"{size}b", self.vgname])
         return dict(name=self.name, size=size, device=self.volume_vol2path())
 
-    def create_thin(self, size: int, thinpool: str) -> dict:
+    def create_thin(self, size: int, thinpool: str) -> dict | None:
         """Create a thin logical volume in a thin pool"""
         assert self.name is not None
-        runcmd(["lvcreate", "--thin", "-V", f"{size}b", "-n", self.name, f"{self.vgname}/{thinpool}"])
-        return dict(name=self.name, size=size, device=self.volume_vol2path())
+        runcmd(["lvcreate", "--thin", "--virtualsize", f"{size}b", "--name", self.name, f"{self.vgname}/{thinpool}"])
+        return self.volume_read()
+
+    def create_thinsnap(self, parent: str) -> dict | None:
+        """Create a snapshot volume in a thin pool"""
+        assert self.name is not None
+        runcmd(["lvcreate", "--snapshot", "--name", self.name, f"{self.vgname}/{parent}"])
+        runcmd(["lvchange", "--activate", "y", f"/dev/{self.vgname}/{self.name}", "--ignoreactivationskip"])
+        return self.volume_read()
+
+    def rollback_snapshot(self) -> dict | None:
+        assert self.name is not None
+        parent = self.get_parent()
+        runcmd(["lvconvert", "--merge", f"{self.vgname}/{self.name}"])
+        return LV(self.vgname, parent).volume_read()
+
+    def get_parent(self):
+        vol = self.get()
+        if vol is None:
+            return None
+        res = self.vol2dict(vol)
+        if res is None:
+            return None
+        return res.get("parent")
 
     @override
     def delete(self) -> None:
-        runcmd(["lvremove", self.volname, "-y"])
+        runcmd(["lvremove", self.volname, "--yes"])
 
     @override
     def scan(self) -> list[dict]:
         runcmd(["lvscan"], True)
         return self.getlist()
 
+    def vol2dict(self, vol: dict):
+        created = datetime.datetime.strptime(
+            vol["LV Creation host, time"].split(",", 1)[-1].strip(), "%Y-%m-%d %H:%M:%S %z"
+        )
+        if "LV Pool metadata" in vol:
+            # thin pool
+            return None
+        if vol.get("LV Status") not in ("available",):
+            # not available
+            return None
+        size = int(vol["LV Size"].removesuffix(" B"))
+        readonly = vol["LV Write Access"] == "read only"
+        thin = "LV Pool name" in vol
+        parent = vol.get("LV Thin origin name")
+        if not parent:
+            snapstate = vol.get("LV snapshot status")
+            if snapstate:
+                if snapstate.startswith("active destination for"):
+                    parent = snapstate.removeprefix("active destination for ")
+        return dict(
+            name=vol["LV Name"],
+            created=created.isoformat(),
+            size=size,
+            used=int(vol["# open"]),
+            readonly=readonly,
+            thin=thin,
+            parent=parent,
+        )
+
     def volume_list(self):
         """List all logical volumes in the volume group"""
         vols = self.getlist()
         res = []
         for vol in vols:
-            created = datetime.datetime.strptime(
-                vol["LV Creation host, time"].split(",", 1)[-1].strip(), "%Y-%m-%d %H:%M:%S %z"
-            )
-            size = int(vol["LV Size"].removesuffix(" B"))
-            readonly = vol["LV Write Access"] == "read only"
-            res.append(
-                dict(
-                    name=vol["LV Name"],
-                    created=created.isoformat(),
-                    size=size,
-                    used=int(vol["# open"]),
-                    readonly=readonly,
-                )
-            )
+            ent = self.vol2dict(vol)
+            if ent:
+                res.append(ent)
         return res
 
     def volume_read(self):
         """Read details of a specific logical volume"""
-        vols = self.getlist()
-        for vol in vols:
-            if vol["LV Name"] != self.name:
-                continue
-            created = datetime.datetime.strptime(
-                vol["LV Creation host, time"].split(",", 1)[-1].strip(), "%Y-%m-%d %H:%M:%S %z"
-            )
-            size = int(vol["LV Size"].removesuffix(" B"))
-            readonly = vol["LV Write Access"] == "read only"
-            return dict(
-                name=vol["LV Name"],
-                created=created.isoformat(),
-                size=size,
-                used=int(vol["# open"]),
-                readonly=readonly,
-            )
-        return None
+        vol = self.get()
+        if vol is None:
+            return None
+        return self.vol2dict(vol)
 
     def volume_vol2path(self):
         """Convert volume name to device path"""
@@ -296,7 +330,7 @@ class LV(Base):
     def resize(self, newsize: int):
         """Resize the logical volume to a new size in bytes"""
         assert self.name is not None
-        runcmd(["lvresize", "--size", f"{newsize}b", self.volname, "-y"])
+        runcmd(["lvresize", "--size", f"{newsize}b", self.volname, "--yes"])
 
     def format_volume(self, filesystem: str, label: str | None):
         """Format the logical volume to make filesystem"""
