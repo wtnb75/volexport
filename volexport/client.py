@@ -167,6 +167,58 @@ def volume_delete(req, name):
 @verbose_option
 @client_option
 @output_format
+@click.option("--name", required=True, help="volume name")
+@click.option("--parent", required=True, help="parent volume name")
+@click.option("--size", type=SizeType(), help="volume size")
+def snapshot_create(req, name, parent, size):
+    """create snapshot"""
+    res = req.post(f"/volume/{parent}/snapshot", json=dict(name=name, size=size))
+    res.raise_for_status()
+    return res.json()
+
+
+@cli.command()
+@verbose_option
+@client_option
+@output_format
+@click.option("--parent", required=True, help="parent volume name")
+def snapshot_list(req, parent):
+    """list snapshot"""
+    res = req.get(f"/volume/{parent}/snapshot")
+    res.raise_for_status()
+    return res.json()
+
+
+@cli.command()
+@verbose_option
+@client_option
+@output_format
+@click.option("--name", required=True, help="snapshot name")
+@click.option("--parent", required=True, help="parent volume name")
+def snapshot_get(req, name, parent):
+    """get snapshot info"""
+    res = req.get(f"/volume/{parent}/snapshot/{name}")
+    res.raise_for_status()
+    return res.json()
+
+
+@cli.command()
+@verbose_option
+@client_option
+@output_format
+@click.option("--name", required=True, help="snapshot name")
+@click.option("--parent", required=True, help="parent volume name")
+def snapshot_delete(req, name, parent):
+    """delete snapshot"""
+    res = req.delete(f"/volume/{parent}/snapshot/{name}")
+    res.raise_for_status()
+    return res.json()
+
+
+@cli.command()
+@verbose_option
+@client_option
+@output_format
 def export_list(req):
     """list exports"""
     res = req.get("/export")

@@ -27,6 +27,7 @@ def cli(ctx):
 @click.option("--nics", multiple=True, help="use interfaces")
 @click.option("--iqn-base", help="iSCSI target basename")
 @click.option("--vg", help="LVM volume group")
+@click.option("--lvm-thinpool", help="LVM thin pool")
 @click.option("--host", default="127.0.0.1", envvar="VOLEXP_HOST", help="listen host")
 @click.option("--port", default=8080, type=int, envvar="VOLEXP_PORT", help="listen port")
 @click.option("--log-config", type=click.Path(), help="uvicorn log config")
