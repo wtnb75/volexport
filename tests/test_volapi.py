@@ -171,6 +171,39 @@ class TestVolumeAPI(unittest.TestCase):
         run.assert_called_once_with(["sudo", "vgdisplay", "--unit", "b", "vg0"], **self.run_basearg)
 
     @patch("subprocess.run")
+    def test_snapshot_create(self, run):
+        run.return_value.exit_code = 0
+        run.return_value.stdout = """
+  --- Logical volume ---
+  LV Path                /dev/vg0/snap123
+  LV Name                snap123
+  VG Name                vg0
+  LV UUID                3ofMuS-gP7w-ifv7-bN0G-ftX5-pGVE-yIfcR3
+  LV Write Access        read/write
+  LV Creation host, time lima-server, 2025-09-06 16:54:25 +0900
+  LV snapshot status     active destination for vol001
+  LV Status              available
+  # open                 0
+  LV Size                10737418240 B
+  Current LE             2560
+  COW-table size         1073741824 B
+  COW-table LE           256
+  Allocated to snapshot  0.00%
+  Snapshot chunk size    4096 B
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           252:3
+"""
+        res = TestClient(api).post("/volume/vol123/snapshot", json=dict(name="snap123", size=1024 * 1024 * 1024))
+        self.assertEqual(200, res.status_code)
+        run.assert_any_call(
+            ["sudo", "lvcreate", "--snapshot", "--size", "1073741824b", "--name", "snap123", "/dev/vg0/vol123"],
+            **self.run_basearg,
+        )
+
+    @patch("subprocess.run")
     def test_resize(self, run):
         noout = MagicMock()
         tgtadm_show = MagicMock(
