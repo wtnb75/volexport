@@ -89,5 +89,45 @@ def apispec(format):
         json.dump(api.openapi(), fp=sys.stdout)
 
 
+@cli.command()
+@verbose_option
+@click.option("--endpoint", required=True, help="volexport endpoint")
+@click.option("--node-id", required=True, help="node id")
+@click.option(
+    "--hostport", default="127.0.0.1:9999", show_default=True, help="listen host:port, unix socket: unix://(path)"
+)
+@click.option("--private-key", type=click.File("r"), help="private key .pem file for TLS")
+@click.option("--cert", type=click.File("r"), help="certificate .pem file for TLS")
+@click.option("--rootcert", type=click.File("r"), help="ca cert for TLS/mTLS")
+@click.option("--use-mtls/--no-mtls", default=False, show_default=True, help="use client auth")
+@click.option("--max-workers", type=int, help="# of workers")
+def csiserver(hostport, endpoint, node_id, private_key, cert, rootcert, use_mtls, max_workers):
+    """Run the CSI driver service"""
+    from pathlib import Path
+    from volexpcsi.server import boot_server
+
+    _log.info("starting server: %s", hostport)
+    conf = dict(endpoint=endpoint, nodeid=node_id, max_workers=max_workers)
+    if private_key and cert:
+        import grpc
+
+        pkey = Path(private_key).read_bytes()
+        chain = Path(cert).read_bytes()
+        root = None
+        if rootcert:
+            root = Path(rootcert).read_bytes()
+        cred = grpc.ssl_server_credentials(
+            [(pkey, chain)],
+            root,
+            require_client_auth=use_mtls,
+        )
+        port, srv = boot_server(hostport=hostport, config=conf, cred=cred)
+    else:
+        port, srv = boot_server(hostport=hostport, config=conf)
+    _log.info("server started: port=%s", port)
+    exit = srv.wait_for_termination()
+    _log.info("server finished: timeout=%s", exit)
+
+
 if __name__ == "__main__":
     cli()
