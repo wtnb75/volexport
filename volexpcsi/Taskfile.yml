@@ -1,0 +1,43 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+  default:
+    cmds:
+      - task -l
+    silent: true
+
+  build:cleanup:
+    desc: cleanup API spec
+    cmds:
+      - rm -r api
+      - mkdir api
+
+  build:download:
+    desc: download API spec
+    cmds:
+      - 'cd api && curl -sLO https://github.com/container-storage-interface/spec/raw/refs/heads/master/csi.proto'
+
+  build:proto:
+    desc: protogen
+    cmds:
+      - "python -m grpc_tools.protoc -Iapi --pyi_out=api --python_out=api --grpc_python_out=api api/csi.proto"
+      - |
+        cat <<EOF > api/__init__.py
+        import sys
+        import os
+        sys.path.append(os.path.dirname(__file__))
+        from .csi_pb2 import *  # noqa
+        from .csi_pb2_grpc import *  # noqa
+        EOF
+
+  build:
+    desc: download + proto
+    cmds:
+      - task: build:cleanup
+      - task: build:download
+      - task: build:proto

@@ -25,7 +25,7 @@ jobs:
         restore-keys: ${{ runner.os }}-pip-
     - uses: wtnb75/actions/python@main
       with:
-        pipinstall: ".[dev]"
+        pipinstall: ".[dev, csi]"
     - uses: wtnb75/actions/ruff@main
     - uses: wtnb75/actions/pytest@main
     - uses: wtnb75/actions/wheel@main
