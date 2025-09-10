@@ -22,11 +22,14 @@ jobs:
         path: _cache
         key: ${{ runner.os }}-pip-${{ github.sha }}
         restore-keys: ${{ runner.os }}-pip-
+    - name: Install Task
+      uses: arduino/setup-task@v2
     - name: versioning
       run: "echo \"VERSION = '${GITHUB_REF##*/v}'\" > volexport/version.py"
     - uses: wtnb75/actions/python@main
       with:
         pipinstall: ".[dev,csi]"
+    - run: task -d volexpcsi build
     - uses: wtnb75/actions/ruff@main
     - uses: wtnb75/actions/pytest@main
     - id: wheel
