@@ -14,7 +14,7 @@ tasks:
   build:cleanup:
     desc: cleanup API spec
     cmds:
-      - rm -r api
+      - rm -rf api
       - mkdir api
 
   build:download:
