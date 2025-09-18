@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, Field, SecretStr, field_serializer
 from .config2 import config2
 from .tgtd import Tgtd
 from .lvm2 import LV
@@ -24,6 +24,10 @@ class ExportResponse(BaseModel):
     passwd: SecretStr = Field(description="password for access", examples=["password123"])
     lun: int = Field(description="LUN number", examples=[1, 2, 3])
     acl: list[str] = Field(description="Access Control List (ACL) for the export")
+
+    @field_serializer("passwd", when_used="json")
+    def dump_secret(self, v):
+        return v.get_secret_value()
 
 
 class ClientInfo(BaseModel):

@@ -28,14 +28,19 @@ def cli(ctx):
 @click.option("--iqn-base", help="iSCSI target basename")
 @click.option("--vg", help="LVM volume group")
 @click.option("--lvm-thinpool", help="LVM thin pool")
-@click.option("--host", default="127.0.0.1", envvar="VOLEXP_HOST", help="listen host")
-@click.option("--port", default=8080, type=int, envvar="VOLEXP_PORT", help="listen port")
+@click.option(
+    "--hostport",
+    default="127.0.0.1:8080",
+    envvar="VOLEXP_HOSTPORT",
+    help="listen host:port, unix socket: unix://(path)",
+)
 @click.option("--log-config", type=click.Path(), help="uvicorn log config")
 @click.option("--cmd-timeout", type=float, envvar="VOLEXP_CMD_TIMEOUT", help="command execution timeout")
 @click.option("--check/--skip-check", default=True, help="pre-boot check")
-def server(host, port, log_config, check, **kwargs):
+def server(hostport, log_config, check, **kwargs):
     """Run the volexport server."""
     import json
+    from urllib.parse import urlparse
 
     for k, v in kwargs.items():
         if k is None or v is None or (isinstance(v, tuple) and len(v) == 0):
@@ -66,7 +71,14 @@ def server(host, port, log_config, check, **kwargs):
         assert Tgtd().sys_show() is not None
 
     # start server
-    uvicorn.run(api, host=host, port=port, log_config=log_config)
+    if "://" not in hostport:
+        url = urlparse("//" + hostport)
+    else:
+        url = urlparse(hostport)
+    if url.scheme == "unix":
+        uvicorn.run(api, uds=url.path, log_config=log_config)
+    else:
+        uvicorn.run(api, host=url.hostname, port=url.port, log_config=log_config)
 
 
 @cli.command()
@@ -107,7 +119,12 @@ def csiserver(hostport, endpoint, node_id, private_key, cert, rootcert, use_mtls
     from volexpcsi.server import boot_server
 
     _log.info("starting server: %s", hostport)
-    conf = dict(endpoint=endpoint, nodeid=node_id, max_workers=max_workers)
+    conf = dict(
+        endpoint=endpoint,
+        nodeid=node_id,
+        max_workers=max_workers,
+        become_method="sudo",
+    )
     if private_key and cert:
         import grpc
 

@@ -556,8 +556,8 @@ Target 1: iqn.def
                 "/dev/vg0/vol00",
                 "--bstype",
                 "rdwr",
-                "--params",
-                "readonly=1",
+                # "--params",
+                # "readonly=1",
             ],
             **self.run_basearg,
         )

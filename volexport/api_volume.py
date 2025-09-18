@@ -159,7 +159,11 @@ def update_volume(name, arg: VolumeUpdateRequest) -> VolumeReadResponse:
         lv.read_only(arg.readonly)
     if arg.size is not None:
         lv.resize(arg.size)
-        Tgtd().refresh_volume_bypath(lv.volume_vol2path())
+        try:
+            Tgtd().refresh_volume_bypath(lv.volume_vol2path())
+        except FileNotFoundError:
+            # not exported
+            pass
     return VolumeReadResponse.model_validate(lv.volume_read())
 
 

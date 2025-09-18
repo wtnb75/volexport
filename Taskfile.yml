@@ -109,7 +109,7 @@ tasks:
   vm:server:boot:
     desc: boot volexport server
     cmds:
-      - "limactl shell server -- /tmp/venv/bin/python -m volexport.main server --vg vg0 --nics eth0 --host 0.0.0.0 --verbose"
+      - "limactl shell server -- /tmp/venv/bin/python -m volexport.main server --vg vg0 --nics eth0 --hostport 0.0.0.0:8080 --verbose"
 
   vm:stop:
     desc: stop VMs
@@ -130,7 +130,7 @@ tasks:
     cmds:
       - 'xpanes -S /tmp/tmux-$(id -u)/default -c "limactl shell {}" {{join " " .VMS}}'
 
-  vm:startup:
+  vm:init:
     desc: startup VMs (create disk, create, start, prepare)
     cmds:
       - task: vm:create:disk
@@ -139,7 +139,7 @@ tasks:
       - task: vm:prepare:server
       - task: vm:prepare:client
 
-  vm:cleanup:
+  vm:fini:
     desc: cleanup VMs (stop, delete, delete disk)
     cmds:
       - task: vm:stop
@@ -151,3 +151,20 @@ tasks:
     cmds:
       - task: apispec
       - docker run -p 3000:3000 -v {{.TASK_DIR}}/volexport-api.yaml:/w/apispec.yaml:ro stoplight/prism mock -h 0.0.0.0 -p 3000 /w/apispec.yaml
+
+  build:csc:
+    desc: build csc binary
+    cmds:
+      - GOPATH={{.TMPDIR}} go install github.com/rexray/gocsi/csc@latest
+      - cp {{.TMPDIR}}/bin/csc csc.native
+      - GOPATH={{.TMPDIR}} GOOS=linux go install github.com/rexray/gocsi/csc@latest
+      - cp {{.TMPDIR}}/bin/linux_*/csc csc.linux
+
+  build:csi-sanity:
+    desc: build csi-sanity binary
+    cmds:
+      - git clone --depth=1 https://github.com/kubernetes-csi/csi-test/ {{.TMPDIR}}/c
+      - make -C {{.TMPDIR}}/c/cmd/csi-sanity VER=local RELEASEVER=local
+      - cp {{.TMPDIR}}/c/cmd/csi-sanity/csi-sanity csi-sanity.native
+      - make -C {{.TMPDIR}}/c/cmd/csi-sanity VER=local RELEASEVER=local GOOS=linux
+      - cp {{.TMPDIR}}/c/cmd/csi-sanity/csi-sanity csi-sanity.linux

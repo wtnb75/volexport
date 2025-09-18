@@ -16,3 +16,8 @@ build/
 *.pyi
 *_pb2.py
 *_pb2_grpc.py
+*.tar.gz
+*.log
+kubectl-calico
+*.linux
+*.native

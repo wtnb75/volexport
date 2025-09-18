@@ -199,7 +199,11 @@ class LV(Base):
     @override
     def getlist(self, volname: str | None = None) -> list[dict]:
         if volname:
-            return runparse(["lvdisplay", "--unit", "b", f"{self.vgname}/{volname}"], 2, 22)
+            try:
+                return runparse(["lvdisplay", "--unit", "b", f"{self.vgname}/{volname}"], 2, 22)
+            except CalledProcessError as e:
+                if "Failed to find logical volume" in e.stderr:
+                    raise FileNotFoundError(f"volume does not exists: {volname}")
         return runparse(["lvdisplay", "--unit", "b", self.vgname], 2, 22)
 
     @override
@@ -211,7 +215,7 @@ class LV(Base):
             assert res is not None
             return res
         except CalledProcessError as e:
-            if e.returncode == 3:
+            if e.returncode == 3 and "Size is not a multiple" in e.stderr:
                 raise InvalidArgument(f"invalid size: {size}")
             raise
 
@@ -257,7 +261,13 @@ class LV(Base):
 
     @override
     def delete(self) -> None:
-        runcmd(["lvremove", self.volname, "--yes"])
+        try:
+            runcmd(["lvremove", self.volname, "--yes"])
+        except CalledProcessError as e:
+            if e.returncode == 5 and "Failed to find" in e.stderr:
+                pass
+            else:
+                raise
 
     @override
     def scan(self) -> list[dict]:
