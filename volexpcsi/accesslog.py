@@ -53,6 +53,10 @@ def accesslog(f: Callable):
             finish = time.time()
             _log.error("finish(timeout) %s <- %s(%.3f sec): %s", client, funcname, finish - start, e, exc_info=e)
             context.abort(code=grpc.StatusCode.DEADLINE_EXCEEDED, details=f"{type(e).__qualname__}: {e}")
+        except AssertionError as e:
+            finish = time.time()
+            _log.error("finish(abort) %s <- %s(%.3f sec): %s", client, funcname, finish - start, e, exc_info=e)
+            context.abort(code=grpc.StatusCode.ABORTED, details=f"{type(e).__qualname__}: {e}")
         except HTTPError as e:
             finish = time.time()
             _log.error(

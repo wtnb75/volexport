@@ -325,7 +325,9 @@ class Tgtd:
         self, filename: str, acl: list[str], readonly: bool = False, user: str | None = None, passwd: str | None = None
     ):
         """Export a volume by its filename with specified ACL and read-only option"""
-        assert Path(filename).exists()
+        if not Path(filename).exists():
+            _log.error("does not exists: %s", filename)
+            raise FileNotFoundError(f"volume does not exists: {filename}")
         iqname = secrets.token_hex(10)
         tgts = [x.removeprefix("Target ") for x in self.target_list().keys() if x.startswith("Target ")]
         _log.debug("existing target: %s", tgts)
@@ -345,7 +347,9 @@ class Tgtd:
         if config.TGT_BSOFLAGS:
             opts["bsoflags"] = config.TGT_BSOFLAGS
         if readonly:
-            opts["params"] = dict(readonly=1)
+            # not supported?
+            # opts["params"] = dict(readonly=1)
+            pass
         self.lun_create(tid=tid, lun=lun, path=filename, bstype=config.TGT_BSTYPE, **opts)
         self.lun_update(tid=tid, lun=lun, vendor_id="VOLEXP", product_id=Path(filename).name)
         self.account_create(user=user, password=passwd)

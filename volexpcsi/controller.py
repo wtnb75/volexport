@@ -48,13 +48,15 @@ class VolExpControl(api.ControllerServicer):
         res: list[api.ListVolumesResponse.Entry] = []
         flag = True
         if request.starting_token:
+            if not request.starting_token.startswith("vol-"):
+                raise AssertionError(f"invalid starting token: {request.starting_token}")
             flag = False
         next_entry: str | None = None
         for vol in vols.json():
             if request.max_entries and request.max_entries < len(res):
                 next_entry = vol["name"]
                 break
-            if not flag and vol["name"] == request.starting_token:
+            if not flag and vol["name"] == request.starting_token.removeprefix("vol-"):
                 flag = True
             if not flag:
                 continue
@@ -68,7 +70,9 @@ class VolExpControl(api.ControllerServicer):
             )
             ent = api.ListVolumesResponse.Entry(volume=vent, status=stat)
             res.append(ent)
-        return api.ListVolumesResponse(entries=res, next_token=next_entry)
+        if next_entry:
+            return api.ListVolumesResponse(entries=res, next_token="vol-" + next_entry)
+        return api.ListVolumesResponse(entries=res)
 
     def CreateVolume(self, request: api.CreateVolumeRequest, context: grpc.ServicerContext):
         self._validate(request)
@@ -76,6 +80,14 @@ class VolExpControl(api.ControllerServicer):
             raise ValueError("no volume name")
         if not request.capacity_range.required_bytes:
             raise ValueError("no capacity specified")
+        chk = self.req.get(f"/volume/{request.name}")
+        if chk.status_code == 200:
+            volsize = chk.json()["size"]
+            if request.capacity_range.required_bytes and volsize < request.capacity_range.required_bytes:
+                raise FileExistsError("volume already exists(short)")
+            if request.capacity_range.limit_bytes and request.capacity_range.limit_bytes < volsize:
+                raise FileExistsError("volume already exists(too large)")
+            return api.CreateVolumeResponse(volume=api.Volume(capacity_bytes=volsize, volume_id=request.name))
         res = self.req.post(
             "/volume",
             json=dict(
@@ -98,6 +110,9 @@ class VolExpControl(api.ControllerServicer):
     def DeleteVolume(self, request: api.DeleteVolumeRequest, context: grpc.ServicerContext):
         self._validate(request)
         res = self.req.delete(f"/volume/{request.volume_id}")
+        if res.status_code == 404:
+            _log.info("delete not found: %s", request.volume_id)
+            return api.DeleteSnapshotRequest()
         res.raise_for_status()
         return api.DeleteVolumeResponse()
 
@@ -105,11 +120,11 @@ class VolExpControl(api.ControllerServicer):
         self._validate(request)
         if not request.node_id:
             raise ValueError("no node_id")
-        if request.volume_capability.access_mode not in (api.VolumeCapability.AccessMode.SINGLE_NODE_WRITER,):
-            raise ValueError("invalid mode")
+        # if request.volume_capability.access_mode not in (api.VolumeCapability.AccessMode.SINGLE_NODE_WRITER,):
+        #     raise ValueError("invalid mode")
         if not request.volume_capability.mount:
             raise ValueError("invalid type")
-        res = self.req.post("/export", json=dict(volname=request.volume_id, readonly=request.readonly))
+        res = self.req.post("/export", json=dict(volname=request.volume_id, readonly=request.readonly, acl=None))
         res.raise_for_status()
         resj = res.json()
         ctxt = {k: str(v) for k, v in resj.items()}
@@ -119,17 +134,20 @@ class VolExpControl(api.ControllerServicer):
         self._validate(request)
         qres = self.req.get("/export", params=dict(volume=request.volume_id))
         qres.raise_for_status()
-        assert len(qres.json()) == 1
-        tgtname = qres.json()[0]["targetname"]
-        res = self.req.delete(f"/export/{tgtname}")
-        res.raise_for_status()
+        for tgt in qres.json():
+            if request.volume_id not in tgt["volumes"]:
+                _log.warning("export response: volume_id=%s, tgt=%s", request.volume_id, tgt)
+                continue
+            tgtname = tgt["targetname"]
+            res = self.req.delete(f"/export/{tgtname}")
+            res.raise_for_status()
         return api.ControllerUnpublishVolumeResponse()
 
     def ControllerExpandVolume(self, request: api.ControllerExpandVolumeRequest, context: grpc.ServicerContext):
         self._validate(request)
         res = self.req.post(f"/volume/{request.volume_id}", json=dict(size=request.capacity_range.required_bytes))
         res.raise_for_status()
-        return api.ControllerExpandVolumeResponse(res.json()["size"], node_expansion_required=True)
+        return api.ControllerExpandVolumeResponse(capacity_bytes=res.json()["size"], node_expansion_required=True)
 
     def ControllerGetVolume(self, request: api.ControllerGetVolumeRequest, context: grpc.ServicerContext):
         self._validate(request)
@@ -158,7 +176,25 @@ class VolExpControl(api.ControllerServicer):
 
     def ValidateVolumeCapabilities(self, request: api.ValidateVolumeCapabilitiesRequest, context: grpc.ServicerContext):
         self._validate(request)
-        return super().ValidateVolumeCapabilities(request, context)
+        if not request.volume_capabilities:
+            raise ValueError("no capabilities")
+        res = self.req.get(f"/volume/{request.volume_id}")
+        if res.status_code != 200:
+            raise FileNotFoundError(f"volume not found: {request.volume_id}")
+        supported_mode = [
+            api.VolumeCapability.AccessMode.Mode.SINGLE_NODE_WRITER,
+        ]
+        caps: list[api.VolumeCapability] = []
+        for cap in request.volume_capabilities:
+            if cap.access_mode.mode in supported_mode:
+                caps.append(cap)
+        return api.ValidateVolumeCapabilitiesResponse(
+            confirmed=api.ValidateVolumeCapabilitiesResponse.Confirmed(
+                volume_capabilities=caps,
+                parameters=request.parameters,
+                mutable_parameters=request.mutable_parameters,
+            ),
+        )
 
     def ListSnapshots(self, request: api.ListSnapshotsRequest, context: grpc.ServicerContext):
         return super().ListSnapshots(request, context)

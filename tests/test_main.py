@@ -82,9 +82,34 @@ class TestCLI(unittest.TestCase):
     def test_server_opts(self, prun, urun):
         prun.side_effect = [self.vgdisplay, self.tgtd]
         res = CliRunner().invoke(
-            cli, ["server", "--quiet", "--vg", "vg123", "--nics", "eth0", "--nics", "eth1", "--port", "9999"]
+            cli,
+            ["server", "--quiet", "--vg", "vg123", "--nics", "eth0", "--nics", "eth1", "--hostport", "127.0.0.1:9999"],
         )
         if res.exception:
             raise res.exception
         self.assertEqual(0, res.exit_code)
         urun.assert_called_once_with(ANY, host="127.0.0.1", port=9999, log_config=None)
+
+    @patch("uvicorn.run")
+    @patch("subprocess.run")
+    def test_server_opts_unix(self, prun, urun):
+        prun.side_effect = [self.vgdisplay, self.tgtd]
+        res = CliRunner().invoke(
+            cli,
+            [
+                "server",
+                "--quiet",
+                "--vg",
+                "vg123",
+                "--nics",
+                "eth0",
+                "--nics",
+                "eth1",
+                "--hostport",
+                "unix:///tmp/test.sock",
+            ],
+        )
+        if res.exception:
+            raise res.exception
+        self.assertEqual(0, res.exit_code)
+        urun.assert_called_once_with(ANY, uds="/tmp/test.sock", log_config=None)
