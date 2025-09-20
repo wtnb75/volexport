@@ -8,7 +8,7 @@ router = APIRouter()
 
 
 class ExportRequest(BaseModel):
-    volname: str = Field(description="Volume name to export", examples=["volume1"])
+    name: str = Field(description="Volume name to export", examples=["volume1"])
     acl: list[str] | None = Field(description="Source IP Addresses to allow access")
     readonly: bool = Field(default=False, description="read-only if true", examples=[True, False])
     user: str | None = Field(default=None, description="user name for access. auto-generate if null")
@@ -67,7 +67,7 @@ def list_export(volume: str | None = None) -> list[ExportReadResponse]:
 
 @router.post("/export", description="Create a new export")
 def create_export(req: Request, arg: ExportRequest) -> ExportResponse:
-    filename = LV(config2.VG, arg.volname).volume_vol2path()
+    filename = LV(config2.VG, arg.name).volume_vol2path()
     if not arg.acl:
         assert req.client is not None
         arg.acl = [req.client.host]

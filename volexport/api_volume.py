@@ -40,7 +40,7 @@ class VolumeReadResponse(BaseModel):
     name: str = Field(description="Name of the volume", examples=["volume1"])
     created: datetime.datetime = Field(description="Creation timestamp of the volume", examples=["2023-10-01T12:00:00"])
     size: VolumeSize = Field(description="Size of the volume in bytes", examples=[1073741824], gt=0)
-    used: int = Field(description="in-use count", examples=[0, 1])
+    used: bool = Field(description="opened or not", examples=[True, False])
     readonly: bool = Field(description="true if read-only", examples=[True, False])
     thin: bool = Field(description="true if thin volume", examples=[True, False])
     parent: str | None = Field(description="parent volname if snapshot")
@@ -87,6 +87,7 @@ class PoolStats(BaseModel):
     total: int = Field(description="Total size of the pool in bytes", examples=[10737418240])
     used: int = Field(description="Used size of the pool in bytes", examples=[5368709120])
     free: int = Field(description="Free size of the pool in bytes", examples=[5368709120])
+    snapshots: int = Field(description="Number of snapshots in the pool", examples=[5])
     volumes: int = Field(description="Number of volumes in the pool", examples=[10])
 
 
@@ -179,9 +180,8 @@ def stats_volume() -> PoolStats:
     info = VG(config2.VG).get()
     if info is None:
         raise HTTPException(status_code=404, detail="pool not found")
-    vols = info.get("Cur LV", 0)
-    pesize = int(info["PE Size"].removesuffix(" B"))
-    total_pe = int(info["Total PE"])
-    alloc_pe = int(info["Alloc PE / Size"].split()[0])
-    free_pe = int(info["Free  PE / Size"].split()[0])
-    return PoolStats(total=pesize * total_pe, used=pesize * alloc_pe, free=pesize * free_pe, volumes=vols)
+    vols = int(info["lv_count"])
+    total = int(info["vg_size"])
+    free = int(info["vg_free"])
+    snaps = int(info["snap_count"])
+    return PoolStats(total=total, used=total - free, free=free, snapshots=snaps, volumes=vols)

@@ -1,4 +1,5 @@
 import unittest
+import json
 from unittest.mock import patch, ANY, MagicMock
 from volexport.main import cli
 from click.testing import CliRunner
@@ -41,36 +42,27 @@ class TestCLI(unittest.TestCase):
         resdict = json.loads(res.output)
         self.assertIn("paths", resdict)
 
-    vgdisplay = MagicMock(
-        stdout="""
-  --- Volume group ---
-  VG Name               vg0
-  System ID
-  Format                lvm2
-  Metadata Areas        1
-  Metadata Sequence No  2
-  VG Access             read/write
-  VG Status             resizable
-  MAX LV                0
-  Cur LV                1
-  Open LV               1
-  Max PV                0
-  Cur PV                1
-  Act PV                1
-  VG Size               68178411520 B
-  PE Size               4194304 B
-  Total PE              16255
-  Alloc PE / Size       16254 / 68174217216 B
-  Free  PE / Size       1 / 4194304 B
-  VG UUID               hPuYd4-QEoi-RcvL-Jdr5-XLrf-urQm-hgybLl
-"""
+    vgs = MagicMock(
+        stdout=json.dumps(
+            {
+                "report": [
+                    {
+                        "vg": [
+                            dict(
+                                vg_name="vg0",
+                            )
+                        ]
+                    }
+                ]
+            }
+        )
     )
     tgtd = MagicMock(stdout="")
 
     @patch("uvicorn.run")
     @patch("subprocess.run")
     def test_server_verbose(self, prun, urun):
-        prun.side_effect = [self.vgdisplay, self.tgtd]
+        prun.side_effect = [self.vgs, self.tgtd]
         res = CliRunner().invoke(cli, ["server", "--verbose"])
         self.assertEqual(0, res.exit_code)
         if res.exception:
@@ -80,7 +72,7 @@ class TestCLI(unittest.TestCase):
     @patch("uvicorn.run")
     @patch("subprocess.run")
     def test_server_opts(self, prun, urun):
-        prun.side_effect = [self.vgdisplay, self.tgtd]
+        prun.side_effect = [self.vgs, self.tgtd]
         res = CliRunner().invoke(
             cli,
             ["server", "--quiet", "--vg", "vg123", "--nics", "eth0", "--nics", "eth1", "--hostport", "127.0.0.1:9999"],
@@ -93,7 +85,7 @@ class TestCLI(unittest.TestCase):
     @patch("uvicorn.run")
     @patch("subprocess.run")
     def test_server_opts_unix(self, prun, urun):
-        prun.side_effect = [self.vgdisplay, self.tgtd]
+        prun.side_effect = [self.vgs, self.tgtd]
         res = CliRunner().invoke(
             cli,
             [

@@ -246,7 +246,7 @@ def export_stats(req):
 @click.option("--acl", multiple=True, help="access control list")
 def export_create(req: VERequest, name, acl, show_command):
     """create new export"""
-    res = req.post("/export", json=dict(volname=name, acl=list(acl)))
+    res = req.post("/export", json=dict(name=name, acl=list(acl)))
     res.raise_for_status()
     if show_command:
         data = res.json()
@@ -439,7 +439,7 @@ def attach_volume(req: VERequest, name, format, mount):
                 addr = ip.ip
             if addr:
                 addrs.append(addr)
-    res = req.post("/export", json=dict(volname=name, acl=list(addrs)))
+    res = req.post("/export", json=dict(name=name, acl=list(addrs)))
     res.raise_for_status()
     data = res.json()
     addrs: list[str] = data["addresses"]

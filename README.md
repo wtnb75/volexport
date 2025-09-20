@@ -132,7 +132,7 @@ create volume and mount
 - create volume (name=vol123, size=100GB)
     - `curl --json $(jo name=vol123 size=107374182400) ${endpoint}/volume`
 - export volume
-    - `curl --json $(jo volname=vol123 acl=$(jo -a 192.168.104.0/24)) ${endpoint}/export`
+    - `curl --json $(jo name=vol123 acl=$(jo -a 192.168.104.0/24)) ${endpoint}/export`
     - ```json
       {
         "protocol": "iscsi",
