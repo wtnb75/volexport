@@ -64,6 +64,8 @@ class VolExpNode(api.NodeServicer):
         self._validate(request)
         if not request.staging_target_path:
             raise ValueError("no staging target path")
+        if not MessageToDict(request.volume_capability):
+            raise ValueError("no capability")
         # attach iscsi
         targetname = request.publish_context.get("targetname")
         username = request.publish_context.get("user")

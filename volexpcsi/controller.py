@@ -2,6 +2,7 @@ import grpc
 from logging import getLogger
 from volexport.client import VERequest
 from google.protobuf.message import Message
+from google.protobuf.json_format import MessageToDict
 from . import api
 from .accesslog import servicer_accesslog
 
@@ -120,6 +121,8 @@ class VolExpControl(api.ControllerServicer):
         self._validate(request)
         if not request.node_id:
             raise ValueError("no node_id")
+        if not MessageToDict(request.volume_capability):
+            raise ValueError("no capability")
         # if request.volume_capability.access_mode not in (api.VolumeCapability.AccessMode.SINGLE_NODE_WRITER,):
         #     raise ValueError("invalid mode")
         if not request.volume_capability.mount:
