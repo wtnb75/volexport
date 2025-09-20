@@ -146,5 +146,106 @@ def csiserver(hostport, endpoint, node_id, private_key, cert, rootcert, use_mtls
     _log.info("server finished: timeout=%s", exit)
 
 
+@cli.command()
+@verbose_option
+@click.option("--vg", help="LVM volume group")
+@click.option("--untag/--tag", default=False, help="remove/add tags to volumes")
+def tag_volume(untag, **kwargs):
+    for k, v in kwargs.items():
+        if k is None or v is None:
+            continue
+        kk = f"VOLEXP_{k.upper()}"
+        os.environ[kk] = v
+    os.environ["VOLEXP_NICS"] = "[]"
+    from .config2 import config2
+    from .lvm2 import LV
+    from .util import runcmd
+
+    data = LV(config2.VG).getlist()
+
+    for vol in data:
+        lvmname: str = vol["lv_name"]
+        volname: str | None = None
+        for tag in vol.get("lv_tags", "").split(","):
+            if tag.startswith("volname."):
+                volname = tag.removeprefix("volname.")
+                break
+        if untag and volname:
+            _log.info("remove tag: %s (%s)", lvmname, volname)
+            runcmd(["lvchange", "--deltag", f"volname.{volname}", f"{config2.VG}/{lvmname}"], root=True)
+        elif not untag and not volname:
+            _log.info("set tag: %s", lvmname)
+            runcmd(["lvchange", "--addtag", f"volname.{lvmname}", f"{config2.VG}/{lvmname}"], root=True)
+
+
+@cli.command()
+@verbose_option
+@click.option("--vg", help="LVM volume group")
+@click.option("--format", type=click.Choice(["yaml", "json"]), default="yaml", show_default=True)
+@click.option("--output", type=click.File("w"), default="-", help="output file")
+def list_volume(output, format, **kwargs):
+    for k, v in kwargs.items():
+        if k is None or v is None:
+            continue
+        kk = f"VOLEXP_{k.upper()}"
+        os.environ[kk] = v
+    os.environ["VOLEXP_NICS"] = "[]"
+    from .config2 import config2
+    from .lvm2 import LV
+
+    data = LV(config2.VG).volume_list()
+
+    if format == "yaml":
+        import yaml
+
+        yaml.dump(data, stream=output)
+    elif format == "json":
+        import json
+
+        json.dump(data, fp=output)
+
+
+@cli.command()
+@verbose_option
+@click.option("--format", type=click.Choice(["yaml", "json"]), default="yaml", show_default=True)
+@click.option("--output", type=click.File("w"), default="-", help="output file")
+def list_vg(output, format, **kwargs):
+    os.environ["VOLEXP_VG"] = "dummy"
+    os.environ["VOLEXP_NICS"] = "[]"
+    from .lvm2 import VG
+
+    data = VG("dummy").getlist()
+
+    if format == "yaml":
+        import yaml
+
+        yaml.dump(data, stream=output)
+    elif format == "json":
+        import json
+
+        json.dump(data, fp=output)
+
+
+@cli.command()
+@verbose_option
+@click.option("--format", type=click.Choice(["yaml", "json"]), default="yaml", show_default=True)
+@click.option("--output", type=click.File("w"), default="-", help="output file")
+def list_pv(output, format, **kwargs):
+    os.environ["VOLEXP_VG"] = "dummy"
+    os.environ["VOLEXP_NICS"] = "[]"
+    from .lvm2 import PV
+
+    data = PV("dummy").getlist()
+
+    if format == "yaml":
+        import yaml
+
+        yaml.dump(data, stream=output)
+    elif format == "json":
+        import json
+
+        json.dump(data, fp=output)
+
+
 if __name__ == "__main__":
     cli()

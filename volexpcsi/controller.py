@@ -124,7 +124,7 @@ class VolExpControl(api.ControllerServicer):
         #     raise ValueError("invalid mode")
         if not request.volume_capability.mount:
             raise ValueError("invalid type")
-        res = self.req.post("/export", json=dict(volname=request.volume_id, readonly=request.readonly, acl=None))
+        res = self.req.post("/export", json=dict(name=request.volume_id, readonly=request.readonly, acl=None))
         res.raise_for_status()
         resj = res.json()
         ctxt = {k: str(v) for k, v in resj.items()}

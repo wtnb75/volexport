@@ -1,4 +1,5 @@
 import unittest
+import json
 import subprocess
 from collections import namedtuple
 from unittest.mock import patch, ANY, MagicMock
@@ -86,11 +87,23 @@ Target 1: iqn.def
         0.0.0.0/0
         192.168.64.0/24
 """
+    lv0 = dict(lv_name="vol00", lv_full_name="vg0/vol00", lv_path="/dev/vg0/vol00", lv_tags="volname.vol00")
+    lv1 = dict(lv_name="vol01", lv_full_name="vg0/vol01", lv_path="/dev/vg0/vol01", lv_tags="volname.vol01")
+    lv2 = dict(lv_name="vol02", lv_full_name="vg0/vol02", lv_path="/dev/vg0/vol02", lv_tags="volname.vol02")
+    lvs0_str = json.dumps({"report": [{"lv": [lv0]}]})
+    lvs1_str = json.dumps({"report": [{"lv": [lv1]}]})
+    lvs2_str = json.dumps({"report": [{"lv": [lv2]}]})
 
     @patch("subprocess.run")
     def test_exportlist(self, run):
-        run.return_value.exit_code = 0
-        run.return_value.stdout = self.target_show_str
+        tgtadm = MagicMock(exit_code=0, stdout=self.target_show_str)
+        lvs1 = MagicMock(exit_code=0, stdout=self.lvs1_str)
+        lvs2 = MagicMock(exit_code=0, stdout=self.lvs2_str)
+        run.side_effect = [
+            tgtadm,
+            lvs1,
+            lvs2,
+        ]
         res = TestClient(api).get("/export")
         self.assertEqual(200, res.status_code)
         self.assertEqual(
@@ -115,8 +128,14 @@ Target 1: iqn.def
 
     @patch("subprocess.run")
     def test_exportlist_query(self, run):
-        run.return_value.exit_code = 0
-        run.return_value.stdout = self.target_show_str
+        tgtadm = MagicMock(exit_code=0, stdout=self.target_show_str)
+        lvs1 = MagicMock(exit_code=0, stdout=self.lvs1_str)
+        lvs2 = MagicMock(exit_code=0, stdout=self.lvs2_str)
+        run.side_effect = [
+            tgtadm,
+            lvs1,
+            lvs2,
+        ]
         res = TestClient(api).get("/export", params=dict(volume="vol02"))
         self.assertEqual(200, res.status_code)
         self.assertEqual(
@@ -141,16 +160,28 @@ Target 1: iqn.def
 
     @patch("subprocess.run")
     def test_exportlist_query_empty(self, run):
-        run.return_value.exit_code = 0
-        run.return_value.stdout = self.target_show_str
+        tgtadm = MagicMock(exit_code=0, stdout=self.target_show_str)
+        lvs1 = MagicMock(exit_code=0, stdout=self.lvs1_str)
+        lvs2 = MagicMock(exit_code=0, stdout=self.lvs2_str)
+        run.side_effect = [
+            tgtadm,
+            lvs1,
+            lvs2,
+        ]
         res = TestClient(api).get("/export", params=dict(volume="vol03"))
         self.assertEqual(200, res.status_code)
         self.assertEqual([], res.json())
 
     @patch("subprocess.run")
     def test_exportread(self, run):
-        run.return_value.exit_code = 0
-        run.return_value.stdout = self.target_show_str
+        tgtadm = MagicMock(exit_code=0, stdout=self.target_show_str)
+        lvs1 = MagicMock(exit_code=0, stdout=self.lvs1_str)
+        lvs2 = MagicMock(exit_code=0, stdout=self.lvs2_str)
+        run.side_effect = [
+            tgtadm,
+            lvs1,
+            lvs2,
+        ]
         res = TestClient(api).get("/export/iqn.def")
         self.assertEqual(200, res.status_code)
         self.assertEqual(
@@ -175,6 +206,7 @@ Target 1: iqn.def
     @patch("volexport.tgtd.Path")
     def test_exportcreate(self, path, run):
         path.return_value.exists.return_value = True
+        lvm = MagicMock(exit_code=0, stdout=self.lvs0_str)
         listvol_str = """
 Target 1: iqn.def
     System information:
@@ -185,6 +217,7 @@ Target 1: iqn.def
         simple_ok = MagicMock(exit_code=0, stdout="")
         portal_list = MagicMock(exit_code=0, stdout="Portal 0.0.0.0:3260,1")
         run.side_effect = [
+            lvm,
             listvol,
             simple_ok,  # create target
             simple_ok,  # create lun
@@ -204,10 +237,10 @@ Target 1: iqn.def
             "lun": 1,
             "acl": ["1.1.1.1/32"],
         }
-        res = TestClient(api).post("/export", json={"volname": "vol00", "acl": ["1.1.1.1/32"]})
+        res = TestClient(api).post("/export", json={"name": "vol00", "acl": ["1.1.1.1/32"]})
         self.assertEqual(200, res.status_code)
         self.assertEqual(expected, res.json())
-        self.assertEqual(8, run.call_count)
+        self.assertEqual(9, run.call_count)
         run.assert_any_call(
             ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"], **self.run_basearg
         )
@@ -282,6 +315,7 @@ Target 1: iqn.def
     @patch("volexport.tgtd.Path")
     def test_exportcreate_auth(self, path, run):
         path.return_value.exists.return_value = True
+        lvm = MagicMock(exit_code=0, stdout=self.lvs0_str)
         listvol_str = """
 Target 1: iqn.def
     System information:
@@ -292,6 +326,7 @@ Target 1: iqn.def
         simple_ok = MagicMock(exit_code=0, stdout="")
         portal_list = MagicMock(exit_code=0, stdout="Portal 0.0.0.0:3260,1")
         run.side_effect = [
+            lvm,
             listvol,
             simple_ok,  # create target
             simple_ok,  # create lun
@@ -312,11 +347,11 @@ Target 1: iqn.def
             "acl": ["1.1.1.1/32"],
         }
         res = TestClient(api).post(
-            "/export", json={"volname": "vol00", "acl": ["1.1.1.1/32"], "user": "user123", "passwd": "pass123"}
+            "/export", json={"name": "vol00", "acl": ["1.1.1.1/32"], "user": "user123", "passwd": "pass123"}
         )
         self.assertEqual(200, res.status_code)
         self.assertEqual(expected, res.json())
-        self.assertEqual(8, run.call_count)
+        self.assertEqual(9, run.call_count)
         run.assert_any_call(
             ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"], **self.run_basearg
         )
@@ -391,6 +426,7 @@ Target 1: iqn.def
     @patch("volexport.tgtd.Path")
     def test_exportcreate_noacl(self, path, run):
         path.return_value.exists.return_value = True
+        lvm = MagicMock(exit_code=0, stdout=self.lvs0_str)
         listvol_str = """
 Target 1: iqn.def
     System information:
@@ -401,6 +437,7 @@ Target 1: iqn.def
         simple_ok = MagicMock(exit_code=0, stdout="")
         portal_list = MagicMock(exit_code=0, stdout="Portal 0.0.0.0:3260,1")
         run.side_effect = [
+            lvm,
             listvol,
             simple_ok,  # create target
             simple_ok,  # create lun
@@ -420,10 +457,10 @@ Target 1: iqn.def
             "lun": 1,
             "acl": [ANY],
         }
-        res = TestClient(api).post("/export", json={"volname": "vol00", "acl": []})
+        res = TestClient(api).post("/export", json={"name": "vol00", "acl": []})
         self.assertEqual(200, res.status_code)
         self.assertEqual(expected, res.json())
-        self.assertEqual(8, run.call_count)
+        self.assertEqual(9, run.call_count)
         run.assert_any_call(
             ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"], **self.run_basearg
         )
@@ -498,6 +535,7 @@ Target 1: iqn.def
     @patch("volexport.tgtd.Path")
     def test_exportcreate_ro(self, path, run):
         path.return_value.exists.return_value = True
+        lvm = MagicMock(exit_code=0, stdout=self.lvs0_str)
         listvol_str = """
 Target 1: iqn.def
     System information:
@@ -508,6 +546,7 @@ Target 1: iqn.def
         simple_ok = MagicMock(exit_code=0, stdout="")
         portal_list = MagicMock(exit_code=0, stdout="Portal 0.0.0.0:3260,1")
         run.side_effect = [
+            lvm,
             listvol,
             simple_ok,  # create target
             simple_ok,  # create lun
@@ -527,10 +566,10 @@ Target 1: iqn.def
             "lun": 1,
             "acl": ["1.1.1.1/32"],
         }
-        res = TestClient(api).post("/export", json={"volname": "vol00", "acl": ["1.1.1.1/32"], "readonly": True})
+        res = TestClient(api).post("/export", json={"name": "vol00", "acl": ["1.1.1.1/32"], "readonly": True})
         self.assertEqual(200, res.status_code)
         self.assertEqual(expected, res.json())
-        self.assertEqual(8, run.call_count)
+        self.assertEqual(9, run.call_count)
         run.assert_any_call(
             ["sudo", "tgtadm", "--lld", "iscsi", "--mode", "target", "--op", "show"], **self.run_basearg
         )

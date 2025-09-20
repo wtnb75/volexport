@@ -228,9 +228,7 @@ class TestClientCLI(unittest.TestCase):
         if res.exception:
             raise res.exception
         self.assertEqual(0, res.exit_code)
-        req.assert_called_once_with(
-            "POST", "http://dummy.local/export", json={"volname": "vol123", "acl": []}, data=None
-        )
+        req.assert_called_once_with("POST", "http://dummy.local/export", json={"name": "vol123", "acl": []}, data=None)
         self.assertIn("iscsiadm", res.stdout)
         self.assertIn("iqn.abc:def", res.stdout)
         self.assertIn("user123", res.stdout)
