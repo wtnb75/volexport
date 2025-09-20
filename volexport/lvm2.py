@@ -170,7 +170,7 @@ class LV(Base):
     def get(self) -> dict | None:
         if self.name is None:
             return None
-        res = runparse_report(mode=self.mode, filter=f"tag={self.tagname}")
+        res = runparse_report(mode=self.mode, filter=f"tags={self.tagname}")
         if len(res) == 1:
             return res[0]
         return None
@@ -185,7 +185,7 @@ class LV(Base):
     def getlist(self, volname: str | None = None) -> list[dict]:
         if volname:
             try:
-                return runparse_report(mode=self.mode, filter=f"tag={self.tagname}")
+                return runparse_report(mode=self.mode, filter=f"tags={self.tagname}")
             except CalledProcessError as e:
                 if "Failed to find logical volume" in e.stderr:
                     raise FileNotFoundError(f"volume does not exists: {volname}")

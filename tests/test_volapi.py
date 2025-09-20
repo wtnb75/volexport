@@ -142,7 +142,7 @@ class TestVolumeAPI(unittest.TestCase):
                 "b",
                 "--nosuffix",
                 "-S",
-                "tag=volname.lv2",
+                "tags=volname.lv2",
             ],
             **self.run_basearg,
         )
@@ -166,7 +166,7 @@ class TestVolumeAPI(unittest.TestCase):
                 "b",
                 "--nosuffix",
                 "-S",
-                "tag=volname.not-found",
+                "tags=volname.not-found",
             ],
             **self.run_basearg,
         )
@@ -373,7 +373,7 @@ Target 1: iqn.def
                 "b",
                 "--nosuffix",
                 "-S",
-                "tag=volname.lv1",
+                "tags=volname.lv1",
             ],
             **self.run_basearg,
         )
@@ -413,7 +413,7 @@ Target 1: iqn.def
                 "b",
                 "--nosuffix",
                 "-S",
-                "tag=volname.lv1",
+                "tags=volname.lv1",
             ],
             **self.run_basearg,
         )
@@ -442,7 +442,7 @@ Target 1: iqn.def
                 "b",
                 "--nosuffix",
                 "-S",
-                "tag=volname.lv1",
+                "tags=volname.lv1",
             ],
             **self.run_basearg,
         )
@@ -471,7 +471,7 @@ Target 1: iqn.def
                 "b",
                 "--nosuffix",
                 "-S",
-                "tag=volname.lv1",
+                "tags=volname.lv1",
             ],
             **self.run_basearg,
         )
