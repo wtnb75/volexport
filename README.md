@@ -29,21 +29,22 @@ Usage: volexport server [OPTIONS]
   Run the volexport server.
 
 Options:
-  --verbose / --quiet   log level
-  --become-method TEXT  sudo/doas/runas, etc...
-  --tgtadm-bin TEXT     tgtadm command
-  --tgt-bstype TEXT     backing store type
-  --tgt-bsopts TEXT     bs options
-  --tgt-bsoflags TEXT   bs open flags
-  --lvm-bin TEXT        lvm command
-  --nics TEXT           use interfaces
-  --iqn-base TEXT       iSCSI target basename
-  --vg TEXT             LVM volume group
-  --host TEXT           listen host
-  --port INTEGER        listen port
-  --log-config PATH     uvicorn log config
-  --cmd-timeout FLOAT   command execution timeout
-  --help                Show this message and exit.
+  --verbose / --quiet     log level
+  --become-method TEXT    sudo/doas/runas, etc...
+  --tgtadm-bin TEXT       tgtadm command
+  --tgt-bstype TEXT       backing store type
+  --tgt-bsopts TEXT       bs options
+  --tgt-bsoflags TEXT     bs open flags
+  --lvm-bin TEXT          lvm command
+  --nics TEXT             use interfaces
+  --iqn-base TEXT         iSCSI target basename
+  --vg TEXT               LVM volume group
+  --lvm-thinpool TEXT     LVM thin pool
+  --hostport TEXT         listen host:port, unix socket: unix://(path)
+  --log-config PATH       uvicorn log config
+  --cmd-timeout FLOAT     command execution timeout
+  --check / --skip-check  pre-boot check
+  --help                  Show this message and exit.
 ```
 
 - `volexport server [OPTIONS]`
@@ -52,7 +53,7 @@ Options:
 
 CLI
 
-- `docker run --privileged --network host -v /dev:/dev ghcr.io/wtnb75/volexport /entrypoint.sh --host 0.0.0.0 --vg vg0 --nics eth0`
+- `docker run --privileged --network host -v /dev:/dev ghcr.io/wtnb75/volexport:main /entrypoint.sh --hostport 0.0.0.0:8080 --vg vg0 --nics eth0`
 
 docker compose
 
@@ -67,7 +68,7 @@ services:
     environment:
       VOLEXP_VG: vg0
       VOLEXP_NICS: '["eth0"]'
-      VOLEXP_HOST: 0.0.0.0
+      VOLEXP_HOSTPORT: 0.0.0.0:8080
 ```
 
 <details>

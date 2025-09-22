@@ -487,3 +487,12 @@ Target 1: iqn.def
     def test_mkfs_invalid_name(self):
         res = TestClient(api).post("/volume/lv1!2/mkfs", json={"filesystem": "vfat"})
         self.assertEqual(400, res.status_code)
+
+    @patch("subprocess.run")
+    def test_create_snapshot(self, run):
+        run.side_effect = [
+            MagicMock(exit_code=0),
+            MagicMock(stdout=self.lvsnap),
+        ]
+        res = TestClient(api).post("/volume/lv1/snapshot", json=dict(name="snap1", size=10240))
+        self.assertEqual(200, res.status_code)

@@ -149,7 +149,10 @@ def read_snapshot(name, snapname) -> VolumeReadResponse:
 @router.delete("/volume/{name}/snapshot/{snapname}", description="Delete snapshot")
 def delete_snapshot(name, snapname) -> dict:
     # check if name is parent
-    LV(config2.VG, snapname).delete()
+    lv = LV(config2.VG, snapname)
+    if lv.get_parent() != name:
+        raise HTTPException(status_code=404, detail="volume not found")
+    lv.delete()
     return {}
 
 

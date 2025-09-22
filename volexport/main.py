@@ -33,6 +33,7 @@ def cli(ctx):
     default="127.0.0.1:8080",
     envvar="VOLEXP_HOSTPORT",
     help="listen host:port, unix socket: unix://(path)",
+    show_default=True,
 )
 @click.option("--log-config", type=click.Path(), help="uvicorn log config")
 @click.option("--cmd-timeout", type=float, envvar="VOLEXP_CMD_TIMEOUT", help="command execution timeout")
