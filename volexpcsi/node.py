@@ -79,7 +79,7 @@ class VolExpNode(api.NodeServicer):
             self.iscsiadm(m="node", T=targetname, l=None)
         except subprocess.CalledProcessError as e:
             if e.returncode == 15 and "already present" in e.stderr:
-                _log.info("alread logged in: %s", targetname)
+                _log.info("already logged in: %s", targetname)
             else:
                 raise
         return api.NodeStageVolumeResponse()
@@ -145,12 +145,22 @@ class VolExpNode(api.NodeServicer):
         self._validate(request)
         if not request.volume_path:
             raise ValueError("no volume path")
+        res = self.req.get("/export", params=dict(volume=request.volume_id))
+        res.raise_for_status()
+        for tgt in res.json():
+            if request.volume_id not in tgt["volumes"]:
+                _log.warning("export response: volume_id=%s, tgt=%s", request.volume_id, tgt)
+                continue
+            targetname = tgt.get("targetname")
+            break
+        else:
+            _log.warning(f"volume not exported: {request.volume_id}")
+            return api.NodeExpandVolumeResponse()
         try:
             res = self.runcmd(["blkid", "-L", request.volume_id[:16]])
         except subprocess.CalledProcessError:
             raise FileNotFoundError(f"volume not found: {request.volume_id}")
         devname = res.stdout.strip()
-        targetname = ""
         # rescan iscsi
         self.iscsiadm(m="node", T=targetname, R=None)
         # online resize

@@ -1,7 +1,8 @@
 import unittest
 import json
+import tempfile
 import requests
-from unittest.mock import patch
+from unittest.mock import patch, ANY
 from click.testing import CliRunner
 from volexport.client import cli
 
@@ -282,3 +283,229 @@ class TestClientCLI(unittest.TestCase):
         self.assertEqual(0, res.exit_code)
         self.assertEqual(output, json.loads(res.stdout))
         req.assert_called_once_with("GET", "http://dummy.local/address", allow_redirects=True)
+
+    @patch.object(requests.Session, "request")
+    def test_snapshot_create(self, req):
+        output = {"abc": 123}
+        req.return_value.status_code = 200
+        req.return_value.json.return_value = output
+        res = CliRunner().invoke(
+            cli, ["snapshot-create", "--name", "vol123", "--parent", "parent123", "--size", "10M"], env=self.envs
+        )
+        if res.exception:
+            raise res.exception
+        self.assertEqual(0, res.exit_code)
+        self.assertEqual(output, json.loads(res.stdout))
+        req.assert_called_once_with(
+            "POST",
+            "http://dummy.local/volume/parent123/snapshot",
+            data=None,
+            json=dict(name="vol123", size=10 * 1024 * 1024),
+        )
+
+    @patch.object(requests.Session, "request")
+    def test_snapshot_list(self, req):
+        output = {"abc": 123}
+        req.return_value.status_code = 200
+        req.return_value.json.return_value = output
+        res = CliRunner().invoke(cli, ["snapshot-list", "--parent", "parent123"], env=self.envs)
+        if res.exception:
+            raise res.exception
+        self.assertEqual(0, res.exit_code)
+        self.assertEqual(output, json.loads(res.stdout))
+        req.assert_called_once_with(
+            "GET",
+            "http://dummy.local/volume/parent123/snapshot",
+            allow_redirects=True,
+        )
+
+    @patch.object(requests.Session, "request")
+    def test_snapshot_get(self, req):
+        output = {"abc": 123}
+        req.return_value.status_code = 200
+        req.return_value.json.return_value = output
+        res = CliRunner().invoke(cli, ["snapshot-get", "--parent", "parent123", "--name", "vol123"], env=self.envs)
+        if res.exception:
+            raise res.exception
+        self.assertEqual(0, res.exit_code)
+        self.assertEqual(output, json.loads(res.stdout))
+        req.assert_called_once_with(
+            "GET",
+            "http://dummy.local/volume/parent123/snapshot/vol123",
+            allow_redirects=True,
+        )
+
+    @patch.object(requests.Session, "request")
+    def test_snapshot_delete(self, req):
+        output = {"abc": 123}
+        req.return_value.status_code = 200
+        req.return_value.json.return_value = output
+        res = CliRunner().invoke(cli, ["snapshot-delete", "--parent", "parent123", "--name", "vol123"], env=self.envs)
+        if res.exception:
+            raise res.exception
+        self.assertEqual(0, res.exit_code)
+        self.assertEqual(output, json.loads(res.stdout))
+        req.assert_called_once_with("DELETE", "http://dummy.local/volume/parent123/snapshot/vol123")
+
+    @patch.object(requests.Session, "request")
+    def test_backup_list(self, req):
+        output = {"abc": 123}
+        req.return_value.status_code = 200
+        req.return_value.json.return_value = output
+        res = CliRunner().invoke(cli, ["backup-list"], env=self.envs)
+        if res.exception:
+            raise res.exception
+        self.assertEqual(0, res.exit_code)
+        self.assertEqual(output, json.loads(res.stdout))
+        req.assert_called_once_with("GET", "http://dummy.local/mgmt/backup", allow_redirects=True)
+
+    @patch.object(requests.Session, "request")
+    def test_backup_create(self, req):
+        output = {"abc": 123}
+        req.return_value.status_code = 200
+        req.return_value.json.return_value = output
+        res = CliRunner().invoke(cli, ["backup-create"], env=self.envs)
+        if res.exception:
+            raise res.exception
+        self.assertEqual(0, res.exit_code)
+        self.assertEqual(output, json.loads(res.stdout))
+        req.assert_called_once_with("POST", "http://dummy.local/mgmt/backup", data=None, json=None)
+
+    @patch.object(requests.Session, "request")
+    def test_backup_read(self, req):
+        req.return_value.status_code = 200
+        req.return_value.text = "hello\n"
+        res = CliRunner().invoke(cli, ["backup-read", "--name", "backup123"], env=self.envs)
+        if res.exception:
+            raise res.exception
+        self.assertEqual(0, res.exit_code)
+        self.assertEqual("hello\n", res.stdout)
+        req.assert_called_once_with("GET", "http://dummy.local/mgmt/backup/backup123", allow_redirects=True)
+
+    @patch.object(requests.Session, "request")
+    def test_backup_restore(self, req):
+        output = {"abc": 123}
+        req.return_value.status_code = 200
+        req.return_value.json.return_value = output
+        res = CliRunner().invoke(cli, ["backup-restore", "--name", "backup123"], env=self.envs)
+        if res.exception:
+            raise res.exception
+        self.assertEqual(0, res.exit_code)
+        self.assertEqual(output, json.loads(res.stdout))
+        req.assert_called_once_with("POST", "http://dummy.local/mgmt/backup/backup123", data=None, json=None)
+
+    @patch.object(requests.Session, "request")
+    def test_backup_put(self, req):
+        output = {"abc": 123}
+        req.return_value.status_code = 200
+        req.return_value.json.return_value = output
+        with tempfile.NamedTemporaryFile("r+") as tf:
+            tf.write("hello\n")
+            tf.flush()
+            res = CliRunner().invoke(cli, ["backup-put", "--name", "backup123", "--input", tf.name], env=self.envs)
+        if res.exception:
+            raise res.exception
+        self.assertEqual(0, res.exit_code)
+        self.assertEqual(output, json.loads(res.stdout))
+        req.assert_called_once_with("PUT", "http://dummy.local/mgmt/backup/backup123", data="hello\n")
+
+    @patch.object(requests.Session, "request")
+    def test_backup_forget(self, req):
+        output = {"abc": 123}
+        req.return_value.status_code = 200
+        req.return_value.json.return_value = output
+        res = CliRunner().invoke(cli, ["backup-forget", "--keep", "10"], env=self.envs)
+        if res.exception:
+            raise res.exception
+        self.assertEqual(0, res.exit_code)
+        self.assertEqual(output, json.loads(res.stdout))
+        req.assert_called_once_with("DELETE", "http://dummy.local/mgmt/backup", params=dict(keep=10))
+
+    @patch.object(requests.Session, "request")
+    def test_backup_delete(self, req):
+        output = {"abc": 123}
+        req.return_value.status_code = 200
+        req.return_value.json.return_value = output
+        res = CliRunner().invoke(cli, ["backup-delete", "--name", "backup123"], env=self.envs)
+        if res.exception:
+            raise res.exception
+        self.assertEqual(0, res.exit_code)
+        self.assertEqual(output, json.loads(res.stdout))
+        req.assert_called_once_with("DELETE", "http://dummy.local/mgmt/backup/backup123")
+
+    @patch.object(requests.Session, "request")
+    @patch("subprocess.run")
+    def test_attach_volume(self, run, req):
+        output = dict(targetname="iqn.abc:def", user="user123", passwd="pass123", addresses=["1.1.1.1"])
+        req.return_value.status_code = 200
+        req.return_value.json.return_value = output
+        res = CliRunner().invoke(cli, ["attach-volume", "--name", "volume123"], env=self.envs)
+        if res.exception:
+            raise res.exception
+        self.assertEqual(0, res.exit_code)
+        req.assert_called_once_with(
+            "POST", "http://dummy.local/export", data=None, json=dict(name="volume123", acl=ANY)
+        )
+        basearg = dict(
+            capture_output=True,
+            encoding="utf-8",
+            timeout=10.0,
+            stdin=-3,
+            start_new_session=True,
+        )
+        run.assert_any_call(["sudo", "iscsiadm", "-m", "discovery", "-t", "st", "-p", "1.1.1.1"], **basearg)
+        run.assert_any_call(
+            [
+                "sudo",
+                "iscsiadm",
+                "-m",
+                "node",
+                "-T",
+                "iqn.abc:def",
+                "-o",
+                "update",
+                "-n",
+                "node.session.auth.authmethod",
+                "-v",
+                "CHAP",
+            ],
+            **basearg,
+        )
+        run.assert_any_call(
+            [
+                "sudo",
+                "iscsiadm",
+                "-m",
+                "node",
+                "-T",
+                "iqn.abc:def",
+                "-o",
+                "update",
+                "-n",
+                "node.session.auth.username",
+                "-v",
+                "user123",
+            ],
+            **basearg,
+        )
+        run.assert_any_call(
+            [
+                "sudo",
+                "iscsiadm",
+                "-m",
+                "node",
+                "-T",
+                "iqn.abc:def",
+                "-o",
+                "update",
+                "-n",
+                "node.session.auth.password",
+                "-v",
+                "pass123",
+            ],
+            **basearg,
+        )
+        run.assert_any_call(
+            ["sudo", "iscsiadm", "-m", "node", "-T", "iqn.abc:def", "-l"],
+            **basearg,
+        )
