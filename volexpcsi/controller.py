@@ -54,7 +54,7 @@ class VolExpControl(api.ControllerServicer):
             flag = False
         next_entry: str | None = None
         for vol in vols.json():
-            if request.max_entries and request.max_entries < len(res):
+            if request.max_entries and request.max_entries <= len(res):
                 next_entry = vol["name"]
                 break
             if not flag and vol["name"] == request.starting_token.removeprefix("vol-"):
@@ -113,7 +113,7 @@ class VolExpControl(api.ControllerServicer):
         res = self.req.delete(f"/volume/{request.volume_id}")
         if res.status_code == 404:
             _log.info("delete not found: %s", request.volume_id)
-            return api.DeleteSnapshotRequest()
+            return api.DeleteVolumeResponse()
         res.raise_for_status()
         return api.DeleteVolumeResponse()
 
@@ -125,7 +125,7 @@ class VolExpControl(api.ControllerServicer):
             raise ValueError("no capability")
         # if request.volume_capability.access_mode not in (api.VolumeCapability.AccessMode.SINGLE_NODE_WRITER,):
         #     raise ValueError("invalid mode")
-        if not request.volume_capability.mount:
+        if not request.volume_capability.mount.fs_type:
             raise ValueError("invalid type")
         res = self.req.post("/export", json=dict(name=request.volume_id, readonly=request.readonly, acl=None))
         res.raise_for_status()
@@ -159,7 +159,7 @@ class VolExpControl(api.ControllerServicer):
         resj = res.json()
         qres = self.req.get("/export", params=dict(volume=request.volume_id))
         qres.raise_for_status()
-        qresj = res.json()
+        qresj = qres.json()
         nodes = []
         for i in qresj:
             nodes.extend(i["connected"]["address"])
