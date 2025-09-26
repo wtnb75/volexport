@@ -1,5 +1,6 @@
 *
 !volexport
+!volexpcsi
 !requirements*.txt
 !setup.*
 !entrypoint.sh
