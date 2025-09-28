@@ -99,6 +99,6 @@ def servicer_accesslog(cls: Type):
     _log.info("decorate names: %s", names)
     for name, fn in inspect.getmembers(cls):
         if name in names:
-            _log.info("update method: %s", name)
+            _log.debug("update method: %s", name)
             setattr(cls, name, accesslog(fn))
     return cls

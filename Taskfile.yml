@@ -6,6 +6,7 @@ vars:
   VMS:
     - server
     - client
+    - k3s
 
 tasks:
   default:
@@ -145,6 +146,14 @@ tasks:
       - task: vm:stop
       - task: vm:delete
       - task: vm:delete:disk
+
+  vm:k:
+    desc: run kubectl
+    env:
+      KUBECONFIG:
+       sh: "ls -1 ~/.lima/k3s/copied-from-guest/kubeconfig.yaml"
+    cmds:
+      - "kubectl {{.CLI_ARGS}}"
 
   boot:mock:
     desc: boot mock server

@@ -1,0 +1,4 @@
+base: template://k3s
+
+networks:
+- lima: user-v2
