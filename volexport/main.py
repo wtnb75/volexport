@@ -104,16 +104,20 @@ def apispec(format):
 
 @cli.command()
 @verbose_option
-@click.option("--endpoint", required=True, help="volexport endpoint")
-@click.option("--node-id", required=True, help="node id")
+@click.option("--endpoint", required=True, help="volexport endpoint", envvar="VOLEXP_ENDPOINT")
+@click.option("--node-id", required=True, help="node id", envvar="VOLEXP_NODE_ID")
 @click.option(
-    "--hostport", default="127.0.0.1:9999", show_default=True, help="listen host:port, unix socket: unix://(path)"
+    "--hostport",
+    default="127.0.0.1:9999",
+    show_default=True,
+    help="listen host:port, unix socket: unix://(path)",
+    envvar="VOLEXP_HOSTPORT",
 )
 @click.option("--private-key", type=click.File("r"), help="private key .pem file for TLS")
 @click.option("--cert", type=click.File("r"), help="certificate .pem file for TLS")
 @click.option("--rootcert", type=click.File("r"), help="ca cert for TLS/mTLS")
 @click.option("--use-mtls/--no-mtls", default=False, show_default=True, help="use client auth")
-@click.option("--max-workers", type=int, help="# of workers")
+@click.option("--max-workers", type=int, help="# of workers", envvar="VOLEXP_MAX_WORKERS")
 def csiserver(hostport, endpoint, node_id, private_key, cert, rootcert, use_mtls, max_workers):
     """Run the CSI driver service"""
     from pathlib import Path
