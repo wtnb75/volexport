@@ -4,6 +4,7 @@ import shutil
 import string
 import uuid
 import json
+from pathlib import Path
 from subprocess import CalledProcessError
 from abc import abstractmethod
 from .util import runcmd
@@ -141,6 +142,14 @@ class VG(Base):
         assert self.name is not None
         assert pv.name is not None
         runcmd(["vgreduce", self.name, pv.name], True)
+
+    def backup(self, outname: Path):
+        assert self.name is not None
+        runcmd(["vgcfgbackup", "--file", str(outname), self.name])
+
+    def restore(self, inname: Path):
+        assert self.name is not None
+        runcmd(["vgcfgrestore", "--file", str(inname), self.name])
 
 
 class LV(Base):
