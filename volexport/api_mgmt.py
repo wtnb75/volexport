@@ -153,7 +153,7 @@ def get_backup_volume(name: str) -> list[VolumeReadResponse]:
             res.append(
                 VolumeReadResponse(
                     name=volname,
-                    created=datetime.datetime.fromtimestamp(lvinfo.get("creation_time")),
+                    created=datetime.datetime.fromtimestamp(lvinfo.get("creation_time"), tz=datetime.timezone.utc),
                     size=extents * extent_size * 512,
                     used=False,
                     readonly="WRITE" not in lvinfo.get("status", []),
