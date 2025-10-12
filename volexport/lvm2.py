@@ -1,3 +1,4 @@
+import os
 import shlex
 import datetime
 import shutil
@@ -146,6 +147,8 @@ class VG(Base):
     def backup(self, outname: Path):
         assert self.name is not None
         runcmd(["vgcfgbackup", "--file", str(outname), self.name])
+        if os.getuid() != 0:
+            runcmd(["chown", str(os.getuid()), str(outname)])
 
     def restore(self, inname: Path):
         assert self.name is not None

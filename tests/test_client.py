@@ -374,12 +374,15 @@ class TestClientCLI(unittest.TestCase):
     @patch.object(requests.Session, "request")
     def test_backup_read(self, req):
         req.return_value.status_code = 200
-        req.return_value.text = "hello\n"
-        res = CliRunner().invoke(cli, ["backup-read", "--name", "backup123"], env=self.envs)
+        req.return_value.content = b"hello\n"
+        with tempfile.NamedTemporaryFile("r+") as tf:
+            res = CliRunner().invoke(cli, ["backup-read", "--name", "backup123", "--output", tf.name], env=self.envs)
+            tf.seek(0)
+            output = tf.read()
         if res.exception:
             raise res.exception
         self.assertEqual(0, res.exit_code)
-        self.assertEqual("hello\n", res.stdout)
+        self.assertEqual("hello\n", output)
         req.assert_called_once_with("GET", "http://dummy.local/mgmt/backup/backup123", allow_redirects=True)
 
     @patch.object(requests.Session, "request")
