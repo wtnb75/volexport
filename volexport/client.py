@@ -319,7 +319,7 @@ def backup_list(req):
 @client_option
 @output_format
 def backup_create(req):
-    """create backups"""
+    """create backup"""
     res = req.post("/mgmt/backup")
     res.raise_for_status()
     return res.json()
@@ -329,11 +329,45 @@ def backup_create(req):
 @verbose_option
 @client_option
 @click.option("--name", required=True, help="name of backup")
-def backup_read(req, name):
-    """read backups"""
+@click.option("--output", type=click.File("wb"))
+def backup_read(req, name, output):
+    """read backup"""
     res = req.get(f"/mgmt/backup/{name}")
     res.raise_for_status()
-    click.echo(res.text, nl=False)
+    if output:
+        output.write(res.content)
+    else:
+        cdisp = res.headers["content-disposition"]
+        if cdisp:
+            outfn = cdisp.split("filename=")[-1].strip()
+        else:
+            outfn = name + ".backup"
+        with open(outfn, "wb") as ofp:
+            ofp.write(res.content)
+
+
+@cli.command()
+@verbose_option
+@client_option
+@output_format
+@click.option("--name", required=True, help="name of backup")
+def backup_read_export(req, name):
+    """read backup(export)"""
+    res = req.get(f"/mgmt/backup/{name}/export")
+    res.raise_for_status()
+    return res.json()
+
+
+@cli.command()
+@verbose_option
+@client_option
+@output_format
+@click.option("--name", required=True, help="name of backup")
+def backup_read_volume(req, name):
+    """read backup(volume)"""
+    res = req.get(f"/mgmt/backup/{name}/volume")
+    res.raise_for_status()
+    return res.json()
 
 
 @cli.command()
@@ -342,7 +376,7 @@ def backup_read(req, name):
 @output_format
 @click.option("--name", required=True, help="name of backup")
 def backup_restore(req, name):
-    """read backups"""
+    """restore backup"""
     res = req.post(f"/mgmt/backup/{name}")
     res.raise_for_status()
     return res.json()
@@ -355,7 +389,7 @@ def backup_restore(req, name):
 @click.option("--name", required=True, help="name of backup")
 @click.option("--input", type=click.File("r"))
 def backup_put(req, name, input):
-    """put saved backups"""
+    """write backup data"""
     res = req.put(f"/mgmt/backup/{name}", data=input.read())
     res.raise_for_status()
     return res.json()
@@ -379,7 +413,7 @@ def backup_forget(req, keep):
 @output_format
 @click.option("--name", required=True, help="name of backup")
 def backup_delete(req, name):
-    """delete old backups"""
+    """delete old backup"""
     res = req.delete(f"/mgmt/backup/{name}")
     res.raise_for_status()
     return res.json()
