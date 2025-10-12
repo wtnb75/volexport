@@ -2,6 +2,7 @@ import unittest
 import tempfile
 import zipfile
 import io
+import os
 from pathlib import Path
 from unittest.mock import patch, ANY
 from fastapi.testclient import TestClient
@@ -16,10 +17,13 @@ class TestMgmtAPI(unittest.TestCase):
         self.td = tempfile.TemporaryDirectory()
         self.orig_bak = config.BACKUP_DIR
         config.BACKUP_DIR = self.td.name
+        self.tz = os.getenv("TZ", "")
+        os.environ["TZ"] = "Asia/Tokyo"
 
     def tearDown(self):
         self.td.cleanup()
         config.BACKUP_DIR = self.orig_bak
+        os.environ["TZ"] = self.tz
 
     @patch("subprocess.run")
     def test_create_list_get_backup(self, run):
