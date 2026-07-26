@@ -1,20 +1,22 @@
+import datetime
+import io
+import tempfile
+import zipfile
+from collections.abc import Iterator
+from logging import getLogger
+from pathlib import Path
+
+import yaml
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse
-from pathlib import Path
-from typing import Iterator
-import io
-import yaml
-import datetime
-import zipfile
-import tempfile
-from .config import config
-from .config2 import config2
-from .tgtd import Tgtd
-from .lvm2 import VG
+
 from .api_export import ExportReadResponse
 from .api_volume import VolumeReadResponse
+from .config import config
+from .config2 import config2
 from .exceptions import InvalidArgument
-from logging import getLogger
+from .lvm2 import VG
+from .tgtd import Tgtd
 
 _log = getLogger(__name__)
 router = APIRouter()
@@ -75,7 +77,7 @@ def create_backup() -> dict[str, str]:
 
 @router.get("/mgmt/backup", description="list backup files")
 def list_backup() -> list[dict]:
-    return [dict(name=path.with_suffix("").name) for path in sorted(_list_backup())]
+    return [{"name": path.with_suffix("").name} for path in sorted(_list_backup())]
 
 
 @router.delete("/mgmt/backup", description="delete old backup file")
@@ -110,7 +112,7 @@ def get_backup_export(name: str) -> list[ExportReadResponse]:
             vol = volparsed.get(config2.VG, {}).get("logical_volumes", {}).get(exp["volume"])
             if not vol:
                 raise Exception(f"invalid backup format: vol {exp['volume']}")
-            volname = [x.removeprefix("volname.") for x in vol.get("tags", []) if x.startswith("volname.")][0]
+            volname = next(x.removeprefix("volname.") for x in vol.get("tags", []) if x.startswith("volname."))
             res.append(
                 ExportReadResponse(
                     protocol="iscsi",
@@ -144,7 +146,7 @@ def get_backup_volume(name: str) -> list[VolumeReadResponse]:
             raise Exception(f"invalid backup format: extent size={extent_size}")
         for lvinfo in vginfo.get("logical_volumes", {}).values():
             tags = lvinfo.get("tags", [])
-            volname = [x.removeprefix("volname.") for x in tags if x.startswith("volname.")][0]
+            volname = next(x.removeprefix("volname.") for x in tags if x.startswith("volname."))
             if "VISIBLE" not in lvinfo.get("status", []):
                 continue
             extents = 0
@@ -153,7 +155,7 @@ def get_backup_volume(name: str) -> list[VolumeReadResponse]:
             res.append(
                 VolumeReadResponse(
                     name=volname,
-                    created=datetime.datetime.fromtimestamp(lvinfo.get("creation_time"), tz=datetime.timezone.utc),
+                    created=datetime.datetime.fromtimestamp(lvinfo.get("creation_time"), tz=datetime.UTC),
                     size=extents * extent_size * 512,
                     used=False,
                     readonly="WRITE" not in lvinfo.get("status", []),
@@ -191,7 +193,7 @@ def restore_backup(name: str, export: bool = True, volume: bool = True) -> dict[
     if not (export or volume):
         raise InvalidArgument("nothing to restore")
     if path.exists():
-        result = dict(status="OK")
+        result = {"status": "OK"}
         with zipfile.ZipFile(path, "r") as zf, tempfile.NamedTemporaryFile("r+") as tf:
             if export:
                 Tgtd().restore(zf.read("export").decode("utf-8"))

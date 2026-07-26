@@ -1,12 +1,15 @@
-from urllib.parse import urlsplit
-from socket import AF_INET6, AF_INET
-import shlex
 import secrets
-import ifaddr
+import shlex
 import tempfile
-from pathlib import Path
+from collections.abc import Callable, Sequence
 from logging import getLogger
-from typing import Sequence, Callable, TypedDict
+from pathlib import Path
+from socket import AF_INET, AF_INET6
+from typing import TypedDict
+from urllib.parse import urlsplit
+
+import ifaddr
+
 from .config import config
 from .config2 import config2
 from .util import runcmd
@@ -69,7 +72,7 @@ class Tgtd:
                 if isinstance(target[k], dict):
                     target = target[k]
                 else:
-                    target[k] = dict(name=target[k])
+                    target[k] = {"name": target[k]}
                     target = target[k]
             levels = levels[:level]
             levels.append(node["key"])
@@ -200,11 +203,11 @@ class Tgtd:
 
     def portal_add(self, hostport):
         """Add a new portal"""
-        return self.tgtadm(lld=self.lld, mode="portal", op="new", param=dict(portal=hostport))
+        return self.tgtadm(lld=self.lld, mode="portal", op="new", param={"portal": hostport})
 
     def portal_delete(self, hostport):
         """Delete a portal"""
-        return self.tgtadm(lld=self.lld, mode="portal", op="delete", param=dict(portal=hostport))
+        return self.tgtadm(lld=self.lld, mode="portal", op="delete", param={"portal": hostport})
 
     def list_session(self, tid: int):
         """List all sessions for a target"""
@@ -288,15 +291,15 @@ class Tgtd:
             volumes.append(lun["Backing store path"])
         accounts = list((tgtinfo.get("Account information") or {}).keys())
         acls = list((tgtinfo.get("ACL information") or {}).keys())
-        return dict(
-            protocol=self.lld,
-            tid=tgtid,
-            targetname=name,
-            connected=connected_from,
-            volumes=volumes,
-            users=accounts,
-            acl=acls,
-        )
+        return {
+            "protocol": self.lld,
+            "tid": tgtid,
+            "targetname": name,
+            "connected": connected_from,
+            "volumes": volumes,
+            "users": accounts,
+            "acl": acls,
+        }
 
     def _find_target(self, fn: Callable):
         return next(((tgtid, tgt) for tgtid, tgt in self.target_list().items() if fn(tgtid, tgt)), (None, None))
@@ -329,7 +332,7 @@ class Tgtd:
             _log.error("does not exists: %s", filename)
             raise FileNotFoundError(f"volume does not exists: {filename}")
         iqname = secrets.token_hex(10)
-        tgts = [x.removeprefix("Target ") for x in self.target_list().keys() if x.startswith("Target ")]
+        tgts = [x.removeprefix("Target ") for x in self.target_list() if x.startswith("Target ")]
         _log.debug("existing target: %s", tgts)
         tgts.append("0")
         max_tgt = max([int(x) for x in tgts])
@@ -357,16 +360,16 @@ class Tgtd:
         for addr in acl:
             self.target_bind_address(tid=tid, addr=addr)
         addrs = self.myaddress()
-        return dict(
-            protocol=self.lld,
-            addresses=addrs,  # list of host:port
-            targetname=name,
-            tid=tid,
-            user=user,
-            passwd=passwd,
-            lun=lun,
-            acl=acl,
-        )
+        return {
+            "protocol": self.lld,
+            "addresses": addrs,  # list of host:port
+            "targetname": name,
+            "tid": tid,
+            "user": user,
+            "passwd": passwd,
+            "lun": lun,
+            "acl": acl,
+        }
 
     def _refresh_lun(self, tid: int, lun: int, luninfo: dict):
         pathname = luninfo["Backing store path"]
@@ -377,7 +380,7 @@ class Tgtd:
         if config.TGT_BSOFLAGS:
             opts["bsoflags"] = config.TGT_BSOFLAGS
         if readonly:
-            opts["params"] = dict(readonly=1)
+            opts["params"] = {"readonly": 1}
         self.lun_delete(tid=tid, lun=lun)
         self.lun_create(tid=tid, lun=lun, path=pathname, bstype=config.TGT_BSTYPE, **opts)
 
@@ -437,12 +440,12 @@ class Tgtd:
         try:
             accounts = tgtinfo.get("Account information", {})
             if accounts is not None:
-                for acct in accounts.keys():
+                for acct in accounts:
                     self.account_unbind(tid=tgtid, user=acct)
                     self.account_delete(user=acct)
             acls = tgtinfo.get("ACL information", {})
             if acls is not None:
-                for acl in acls.keys():
+                for acl in acls:
                     if acl:
                         self.target_unbind_address(tid=tgtid, addr=acl)
             luns = tgtinfo.get("LUN information", {})

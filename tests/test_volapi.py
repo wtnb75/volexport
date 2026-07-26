@@ -1,13 +1,15 @@
-import unittest
 import json
 import subprocess
-from unittest.mock import patch, ANY, MagicMock
+import unittest
+from unittest.mock import ANY, MagicMock, patch
+
 from fastapi.testclient import TestClient
+
 from volexport.api import api
 
 
 class TestVolumeAPI(unittest.TestCase):
-    run_basearg = dict(capture_output=True, encoding="utf-8", timeout=10.0, stdin=-3, start_new_session=True)
+    run_basearg = {"capture_output": True, "encoding": "utf-8", "timeout": 10.0, "stdin": -3, "start_new_session": True}
 
     def test_healthcheck(self):
         res = TestClient(api).get("/health")
@@ -29,62 +31,62 @@ class TestVolumeAPI(unittest.TestCase):
             ["sudo", "lvs", "-o", "lv_all", "--reportformat", "json", "--unit", "b", "--nosuffix"], **self.run_basearg
         )
 
-    lv1 = dict(
-        lv_name="lv1",
-        lv_full_name="vg0/lv1",
-        lv_path="/dev/vg0/lv1",
-        lv_tags="volname.lv1",
-        lv_time="2025-08-10 16:48:15 +0900",
-        lv_active="active",
-        lv_size="68719476736",
-        lv_permissions="writeable",
-        origin="",
-        pool_lv="",
-        lv_device_open="",
-        lv_uuid="xyz",
-    )
-    lv1_ro = dict(
-        lv_name="lv1",
-        lv_full_name="vg0/lv1",
-        lv_path="/dev/vg0/lv1",
-        lv_tags="volname.lv1",
-        lv_time="2025-08-10 16:48:15 +0900",
-        lv_active="active",
-        lv_size="68719476736",
-        lv_permissions="read-only",
-        origin="",
-        pool_lv="",
-        lv_device_open="",
-        lv_uuid="xyz",
-    )
-    lv2 = dict(
-        lv_name="lv2",
-        lv_full_name="vg0/lv2",
-        lv_path="/dev/vg0/lv2",
-        lv_tags="volname.lv2",
-        lv_time="2025-08-12 16:48:15 +0900",
-        lv_active="active",
-        lv_size="20000000000",
-        lv_permissions="writeable",
-        origin="",
-        pool_lv="",
-        lv_device_open="",
-        lv_uuid="xyz",
-    )
-    lvsnap_thin = dict(
-        lv_name="lvsnap",
-        lv_full_name="vg0/lvsnap",
-        lv_path="/dev/vg0/lvsnap",
-        lv_tags="volname.lvsnap",
-        lv_time="2025-08-12 16:48:15 +0900",
-        lv_active="active",
-        lv_size="20000000000",
-        lv_permissions="writeable",
-        origin="thin1",
-        pool_lv="pool1",
-        lv_device_open="",
-        lv_uuid="xyz",
-    )
+    lv1 = {
+        "lv_name": "lv1",
+        "lv_full_name": "vg0/lv1",
+        "lv_path": "/dev/vg0/lv1",
+        "lv_tags": "volname.lv1",
+        "lv_time": "2025-08-10 16:48:15 +0900",
+        "lv_active": "active",
+        "lv_size": "68719476736",
+        "lv_permissions": "writeable",
+        "origin": "",
+        "pool_lv": "",
+        "lv_device_open": "",
+        "lv_uuid": "xyz",
+    }
+    lv1_ro = {
+        "lv_name": "lv1",
+        "lv_full_name": "vg0/lv1",
+        "lv_path": "/dev/vg0/lv1",
+        "lv_tags": "volname.lv1",
+        "lv_time": "2025-08-10 16:48:15 +0900",
+        "lv_active": "active",
+        "lv_size": "68719476736",
+        "lv_permissions": "read-only",
+        "origin": "",
+        "pool_lv": "",
+        "lv_device_open": "",
+        "lv_uuid": "xyz",
+    }
+    lv2 = {
+        "lv_name": "lv2",
+        "lv_full_name": "vg0/lv2",
+        "lv_path": "/dev/vg0/lv2",
+        "lv_tags": "volname.lv2",
+        "lv_time": "2025-08-12 16:48:15 +0900",
+        "lv_active": "active",
+        "lv_size": "20000000000",
+        "lv_permissions": "writeable",
+        "origin": "",
+        "pool_lv": "",
+        "lv_device_open": "",
+        "lv_uuid": "xyz",
+    }
+    lvsnap_thin = {
+        "lv_name": "lvsnap",
+        "lv_full_name": "vg0/lvsnap",
+        "lv_path": "/dev/vg0/lvsnap",
+        "lv_tags": "volname.lvsnap",
+        "lv_time": "2025-08-12 16:48:15 +0900",
+        "lv_active": "active",
+        "lv_size": "20000000000",
+        "lv_permissions": "writeable",
+        "origin": "thin1",
+        "pool_lv": "pool1",
+        "lv_device_open": "",
+        "lv_uuid": "xyz",
+    }
     lvs = json.dumps({"report": [{"lv": [lv1, lv2]}]})
     lvs1 = json.dumps({"report": [{"lv": [lv1]}]})
     lvs1_ro = json.dumps({"report": [{"lv": [lv1_ro]}]})
@@ -92,24 +94,24 @@ class TestVolumeAPI(unittest.TestCase):
     lvsempty = json.dumps({"report": [{"lv": []}]})
     lvsnap = json.dumps({"report": [{"lv": [lvsnap_thin]}]})
     volume_info = [
-        dict(
-            name="lv1",
-            created="2025-08-10T16:48:15+09:00",
-            size=68719476736,
-            used=False,
-            readonly=False,
-            thin=False,
-            parent="",
-        ),
-        dict(
-            name="lv2",
-            created="2025-08-12T16:48:15+09:00",
-            size=20000000000,
-            used=False,
-            readonly=False,
-            thin=False,
-            parent="",
-        ),
+        {
+            "name": "lv1",
+            "created": "2025-08-10T16:48:15+09:00",
+            "size": 68719476736,
+            "used": False,
+            "readonly": False,
+            "thin": False,
+            "parent": "",
+        },
+        {
+            "name": "lv2",
+            "created": "2025-08-12T16:48:15+09:00",
+            "size": 20000000000,
+            "used": False,
+            "readonly": False,
+            "thin": False,
+            "parent": "",
+        },
     ]
 
     @patch("subprocess.run")
@@ -203,13 +205,13 @@ class TestVolumeAPI(unittest.TestCase):
                 "report": [
                     {
                         "vg": [
-                            dict(
-                                vg_name="vg0",
-                                vg_size="68178411520",
-                                vg_free="4194304",
-                                lv_count="1",
-                                snap_count="1",
-                            )
+                            {
+                                "vg_name": "vg0",
+                                "vg_size": "68178411520",
+                                "vg_free": "4194304",
+                                "lv_count": "1",
+                                "snap_count": "1",
+                            }
                         ]
                     }
                 ]
@@ -265,7 +267,7 @@ class TestVolumeAPI(unittest.TestCase):
     def test_snapshot_create(self, run):
         run.return_value.exit_code = 0
         run.return_value.stdout = self.lvsnap
-        res = TestClient(api).post("/volume/vol123/snapshot", json=dict(name="snap123", size=1024 * 1024 * 1024))
+        res = TestClient(api).post("/volume/vol123/snapshot", json={"name": "snap123", "size": 1024 * 1024 * 1024})
         self.assertEqual(200, res.status_code)
         run.assert_any_call(
             [
@@ -494,5 +496,5 @@ Target 1: iqn.def
             MagicMock(exit_code=0),
             MagicMock(stdout=self.lvsnap),
         ]
-        res = TestClient(api).post("/volume/lv1/snapshot", json=dict(name="snap1", size=10240))
+        res = TestClient(api).post("/volume/lv1/snapshot", json={"name": "snap1", "size": 10240})
         self.assertEqual(200, res.status_code)

@@ -1,8 +1,0 @@
-fastapi
-PyYAML
-click
-pydantic-settings
-python-multipart
-uvicorn
-ifaddr
-requests

@@ -1,6 +1,7 @@
-import subprocess
 import shlex
+import subprocess
 from logging import getLogger
+
 from .config import config
 
 _log = getLogger(__name__)

@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
-from typing_extensions import Annotated
+from typing import Annotated
+
 from pydantic import AfterValidator, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

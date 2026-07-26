@@ -1,10 +1,12 @@
 import datetime
-from typing import Annotated
 from enum import Enum
+from typing import Annotated
+
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field, AfterValidator
-from .config2 import config2
+from pydantic import AfterValidator, BaseModel, Field
+
 from .config import config
+from .config2 import config2
 from .lvm2 import LV, VG
 from .tgtd import Tgtd
 

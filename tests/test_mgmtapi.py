@@ -1,16 +1,18 @@
-import unittest
-import tempfile
-import zipfile
 import io
+import tempfile
+import unittest
+import zipfile
 from pathlib import Path
-from unittest.mock import patch, ANY
+from unittest.mock import ANY, patch
+
 from fastapi.testclient import TestClient
+
 from volexport.api import api
 from volexport.config import config
 
 
 class TestMgmtAPI(unittest.TestCase):
-    run_basearg = dict(capture_output=True, encoding="utf-8", timeout=10.0, stdin=-3, start_new_session=True)
+    run_basearg = {"capture_output": True, "encoding": "utf-8", "timeout": 10.0, "stdin": -3, "start_new_session": True}
 
     def setUp(self):
         self.td = tempfile.TemporaryDirectory()
@@ -134,7 +136,7 @@ hello world
     def test_restore_volume(self, run):
         bkdir = Path(self.td.name)
         (bkdir / "2025-08-31.backup").write_bytes(self._example_backup(b"exp123", b"vol123"))
-        res = TestClient(api).post("/mgmt/backup/2025-08-31", params=dict(export=False))
+        res = TestClient(api).post("/mgmt/backup/2025-08-31", params={"export": False})
         self.assertEqual(200, res.status_code)
         self.assertEqual({"status": "OK", "export": "skipped", "volume": "restored"}, res.json())
         run.assert_called_once_with(["sudo", "vgcfgrestore", "--file", ANY, "vg0"], **self.run_basearg)
@@ -143,7 +145,7 @@ hello world
     def test_restore_export(self, run):
         bkdir = Path(self.td.name)
         (bkdir / "2025-08-31.backup").write_bytes(self._example_backup(b"exp123", b"vol123"))
-        res = TestClient(api).post("/mgmt/backup/2025-08-31", params=dict(volume=False))
+        res = TestClient(api).post("/mgmt/backup/2025-08-31", params={"volume": False})
         self.assertEqual(200, res.status_code)
         self.assertEqual({"status": "OK", "export": "restored", "volume": "skipped"}, res.json())
         run.assert_called_once_with(["sudo", "tgt-admin", "-c", ANY, "-e"], **self.run_basearg)
@@ -152,7 +154,7 @@ hello world
     def test_restore_invalid(self, run):
         bkdir = Path(self.td.name)
         (bkdir / "2025-08-31.backup").write_bytes(self._example_backup(b"exp123", b"vol123"))
-        res = TestClient(api).post("/mgmt/backup/2025-08-31", params=dict(volume=False, export=False))
+        res = TestClient(api).post("/mgmt/backup/2025-08-31", params={"volume": False, "export": False})
         self.assertEqual(400, res.status_code)
         run.assert_not_called()
 
@@ -272,24 +274,24 @@ vg0 {
         self.assertEqual(200, res.status_code)
         self.assertEqual(
             [
-                dict(
-                    protocol="iscsi",
-                    connected=[],
-                    targetname="iqn.2025-08.com.github.wtnb75:2142ad0609d8e2b59f5e",
-                    tid=0,
-                    volumes=["vol002"],
-                    users=["aab3c716718ddd3f9efb"],
-                    acl=["192.168.104.3"],
-                ),
-                dict(
-                    protocol="iscsi",
-                    connected=[],
-                    targetname="iqn.2025-08.com.github.wtnb75:38bc4b71cd59d2184c86",
-                    tid=0,
-                    volumes=["vol001"],
-                    users=["1331744c5ae3d1f1c797"],
-                    acl=["192.168.104.3"],
-                ),
+                {
+                    "protocol": "iscsi",
+                    "connected": [],
+                    "targetname": "iqn.2025-08.com.github.wtnb75:2142ad0609d8e2b59f5e",
+                    "tid": 0,
+                    "volumes": ["vol002"],
+                    "users": ["aab3c716718ddd3f9efb"],
+                    "acl": ["192.168.104.3"],
+                },
+                {
+                    "protocol": "iscsi",
+                    "connected": [],
+                    "targetname": "iqn.2025-08.com.github.wtnb75:38bc4b71cd59d2184c86",
+                    "tid": 0,
+                    "volumes": ["vol001"],
+                    "users": ["1331744c5ae3d1f1c797"],
+                    "acl": ["192.168.104.3"],
+                },
             ],
             res.json(),
         )
@@ -303,24 +305,24 @@ vg0 {
         self.assertEqual(200, res.status_code)
         self.assertEqual(
             [
-                dict(
-                    name="vol001",
-                    created="2025-10-11T23:31:07Z",
-                    size=10 * 1024 * 1024 * 1024,
-                    used=False,
-                    readonly=False,
-                    thin=False,
-                    parent=None,
-                ),
-                dict(
-                    name="vol002",
-                    created="2025-10-11T23:31:46Z",
-                    size=1 * 1024 * 1024 * 1024,
-                    used=False,
-                    readonly=False,
-                    thin=False,
-                    parent=None,
-                ),
+                {
+                    "name": "vol001",
+                    "created": "2025-10-11T23:31:07Z",
+                    "size": 10 * 1024 * 1024 * 1024,
+                    "used": False,
+                    "readonly": False,
+                    "thin": False,
+                    "parent": None,
+                },
+                {
+                    "name": "vol002",
+                    "created": "2025-10-11T23:31:46Z",
+                    "size": 1 * 1024 * 1024 * 1024,
+                    "used": False,
+                    "readonly": False,
+                    "thin": False,
+                    "parent": None,
+                },
             ],
             res.json(),
         )

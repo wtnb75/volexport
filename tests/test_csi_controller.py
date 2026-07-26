@@ -1,9 +1,11 @@
 import unittest
-from unittest.mock import patch, MagicMock
-from volexpcsi.controller import VolExpControl
-from volexpcsi import api
-from requests.exceptions import HTTPError
+from unittest.mock import MagicMock, patch
+
 import grpc
+from requests.exceptions import HTTPError
+
+from volexpcsi import api
+from volexpcsi.controller import VolExpControl
 
 
 class dummyctxt:
@@ -17,7 +19,7 @@ class dummyctxt:
 
 class TestCsiControl(unittest.TestCase):
     def setUp(self):
-        self.srv = VolExpControl(dict(endpoint="http://dummy"))
+        self.srv = VolExpControl({"endpoint": "http://dummy"})
 
     def tearDown(self):
         del self.srv
@@ -25,7 +27,7 @@ class TestCsiControl(unittest.TestCase):
     @patch("volexport.client.VERequest.get")
     def test_GetCapacity(self, get):
         get.return_value.status_code = 200
-        get.return_value.json.return_value = dict(free=12345)
+        get.return_value.json.return_value = {"free": 12345}
         arg = api.GetCapacityRequest(
             volume_capabilities=[
                 api.VolumeCapability(access_mode=api.VolumeCapability.AccessMode(mode="SINGLE_NODE_WRITER"))
@@ -75,9 +77,9 @@ class TestCsiControl(unittest.TestCase):
     def test_ListVolumes(self, get):
         get.return_value.status_code = 200
         get.return_value.json.return_value = [
-            dict(name="vol123", size=12345),
-            dict(name="vol234", size=23456),
-            dict(name="volnext", size=999),
+            {"name": "vol123", "size": 12345},
+            {"name": "vol234", "size": 23456},
+            {"name": "volnext", "size": 999},
         ]
         arg = api.ListVolumesRequest(max_entries=2)
         ctxt = dummyctxt()
@@ -103,9 +105,9 @@ class TestCsiControl(unittest.TestCase):
     def test_ListVolumes_invalid(self, get):
         get.return_value.status_code = 200
         get.return_value.json.return_value = [
-            dict(name="vol123", size=12345),
-            dict(name="vol234", size=23456),
-            dict(name="volnext", size=999),
+            {"name": "vol123", "size": 12345},
+            {"name": "vol234", "size": 23456},
+            {"name": "volnext", "size": 999},
         ]
         arg = api.ListVolumesRequest(max_entries=2, starting_token="dummy")
         ctxt = dummyctxt()
@@ -120,7 +122,7 @@ class TestCsiControl(unittest.TestCase):
     def test_CreateVolume(self, post, get):
         get.return_value.status_code = 404
         post.return_value.status_code = 200
-        post.return_value.json.return_value = dict(name="vol123", size=1024)
+        post.return_value.json.return_value = {"name": "vol123", "size": 1024}
         arg = api.CreateVolumeRequest(name="vol123", capacity_range=api.CapacityRange(required_bytes=123))
         ctxt = dummyctxt()
         res = self.srv.CreateVolume(arg, ctxt)
@@ -128,14 +130,14 @@ class TestCsiControl(unittest.TestCase):
         self.assertEqual("vol123", res.volume.volume_id)
         self.assertEqual(1024, res.volume.capacity_bytes)
         get.assert_called_once_with("/volume/vol123")
-        post.assert_any_call("/volume", json=dict(name="vol123", size=123))
+        post.assert_any_call("/volume", json={"name": "vol123", "size": 123})
         post.assert_any_call("/volume/vol123/mkfs", json={})
 
     @patch("volexport.client.VERequest.get")
     @patch("volexport.client.VERequest.post")
     def test_CreateVolume_exists_ok(self, post, get):
         get.return_value.status_code = 200
-        get.return_value.json.return_value = dict(name="vol123", size=1024)
+        get.return_value.json.return_value = {"name": "vol123", "size": 1024}
         arg = api.CreateVolumeRequest(name="vol123", capacity_range=api.CapacityRange(required_bytes=123))
         ctxt = dummyctxt()
         res = self.srv.CreateVolume(arg, ctxt)
@@ -148,7 +150,7 @@ class TestCsiControl(unittest.TestCase):
     @patch("volexport.client.VERequest.get")
     def test_CreateVolume_exists_undersize(self, get):
         get.return_value.status_code = 200
-        get.return_value.json.return_value = dict(name="vol123", size=1024)
+        get.return_value.json.return_value = {"name": "vol123", "size": 1024}
         arg = api.CreateVolumeRequest(name="vol123", capacity_range=api.CapacityRange(required_bytes=2048))
         ctxt = dummyctxt()
         res = self.srv.CreateVolume(arg, ctxt)
@@ -158,7 +160,7 @@ class TestCsiControl(unittest.TestCase):
     @patch("volexport.client.VERequest.get")
     def test_CreateVolume_exists_oversize(self, get):
         get.return_value.status_code = 200
-        get.return_value.json.return_value = dict(name="vol123", size=10240)
+        get.return_value.json.return_value = {"name": "vol123", "size": 10240}
         arg = api.CreateVolumeRequest(
             name="vol123", capacity_range=api.CapacityRange(required_bytes=2048, limit_bytes=4096)
         )
@@ -202,16 +204,16 @@ class TestCsiControl(unittest.TestCase):
     @patch("volexport.client.VERequest.post")
     def test_ControllerPublishVolume(self, post):
         post.return_value.status_code = 200
-        postres = dict(
-            protocol="iscsi",
-            addresses=["1.1.1.1", "2.2.2.2"],
-            targetname="iqn.abc:def",
-            tid=1,
-            user="user123",
-            passwd="passwd123",
-            lun=1,
-            acl=["3.3.3.3"],
-        )
+        postres = {
+            "protocol": "iscsi",
+            "addresses": ["1.1.1.1", "2.2.2.2"],
+            "targetname": "iqn.abc:def",
+            "tid": 1,
+            "user": "user123",
+            "passwd": "passwd123",
+            "lun": 1,
+            "acl": ["3.3.3.3"],
+        }
         post.return_value.json.return_value = postres
         arg = api.ControllerPublishVolumeRequest(
             volume_id="vol123",
@@ -225,7 +227,7 @@ class TestCsiControl(unittest.TestCase):
         res = self.srv.ControllerPublishVolume(arg, ctxt)
         self.assertIsNotNone(res)
         self.assertEqual({k: str(v) for k, v in postres.items()}, res.publish_context)
-        post.assert_called_once_with("/export", json=dict(name="vol123", readonly=False, acl=None))
+        post.assert_called_once_with("/export", json={"name": "vol123", "readonly": False, "acl": None})
 
     def test_ControllerPublishVolume_nodeid_empty(self):
         arg = api.ControllerPublishVolumeRequest(
@@ -281,15 +283,15 @@ class TestCsiControl(unittest.TestCase):
     def test_ControllerUnpublishVolume(self, get, delete):
         get.return_value.status_code = 200
         get.return_value.json.return_value = [
-            dict(targetname="iqn.abc:invalid", volumes=["vol999"]),
-            dict(targetname="iqn.abc:def", volumes=["vol123"]),
+            {"targetname": "iqn.abc:invalid", "volumes": ["vol999"]},
+            {"targetname": "iqn.abc:def", "volumes": ["vol123"]},
         ]
         delete.return_value.status_code = 200
         arg = api.ControllerUnpublishVolumeRequest(volume_id="vol123", node_id="node123")
         ctxt = dummyctxt()
         res = self.srv.ControllerUnpublishVolume(arg, ctxt)
         self.assertIsNotNone(res)
-        get.assert_called_once_with("/export", params=dict(volume="vol123"))
+        get.assert_called_once_with("/export", params={"volume": "vol123"})
         delete.assert_called_once_with("/export/iqn.abc:def")
 
     @patch("volexport.client.VERequest.delete")
@@ -302,13 +304,13 @@ class TestCsiControl(unittest.TestCase):
         ctxt = dummyctxt()
         res = self.srv.ControllerUnpublishVolume(arg, ctxt)
         self.assertIsNotNone(res)
-        get.assert_called_once_with("/export", params=dict(volume="vol123"))
+        get.assert_called_once_with("/export", params={"volume": "vol123"})
         delete.assert_not_called()
 
     @patch("volexport.client.VERequest.post")
     def test_ControllerExpandVolume(self, post):
         post.return_value.status_code = 200
-        post.return_value.json.return_value = dict(size=15000)
+        post.return_value.json.return_value = {"size": 15000}
         arg = api.ControllerExpandVolumeRequest(
             volume_id="vol123", capacity_range=api.CapacityRange(required_bytes=12345, limit_bytes=23456)
         )
@@ -317,14 +319,14 @@ class TestCsiControl(unittest.TestCase):
         self.assertIsNotNone(res)
         self.assertEqual(15000, res.capacity_bytes)
         self.assertTrue(res.node_expansion_required)
-        post.assert_called_once_with("/volume/vol123", json=dict(size=12345))
+        post.assert_called_once_with("/volume/vol123", json={"size": 12345})
 
     @patch("volexport.client.VERequest.get")
     def test_ControllerGetVolume(self, get):
         volget = MagicMock(status_code=200)
-        volget.json.return_value = dict(name="vol123", size=15000)
+        volget.json.return_value = {"name": "vol123", "size": 15000}
         expget = MagicMock(status_code=200)
-        expget.json.return_value = [dict(connected=dict(address="1.1.1.1"))]
+        expget.json.return_value = [{"connected": {"address": "1.1.1.1"}}]
         get.side_effect = [volget, expget]
         arg = api.ControllerGetVolumeRequest(volume_id="vol123")
         ctxt = dummyctxt()
@@ -333,4 +335,4 @@ class TestCsiControl(unittest.TestCase):
         self.assertEqual(15000, res.volume.capacity_bytes)
         self.assertEqual("vol123", res.volume.volume_id)
         get.assert_any_call("/volume/vol123")
-        get.assert_any_call("/export", params=dict(volume="vol123"))
+        get.assert_any_call("/export", params={"volume": "vol123"})

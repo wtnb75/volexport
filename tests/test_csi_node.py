@@ -1,10 +1,12 @@
-import unittest
-import grpc
 import tempfile
+import unittest
 from pathlib import Path
 from unittest.mock import patch
-from volexpcsi.node import VolExpNode
+
+import grpc
+
 from volexpcsi import api
+from volexpcsi.node import VolExpNode
 
 
 class dummyctxt:
@@ -17,16 +19,16 @@ class dummyctxt:
 
 
 class TestCsiNode(unittest.TestCase):
-    basearg = dict(
-        capture_output=True,
-        encoding="utf-8",
-        timeout=10.0,
-        stdin=-3,
-        start_new_session=True,
-    )
+    basearg = {
+        "capture_output": True,
+        "encoding": "utf-8",
+        "timeout": 10.0,
+        "stdin": -3,
+        "start_new_session": True,
+    }
 
     def setUp(self):
-        self.srv = VolExpNode(dict(endpoint="http://dummy", nodeid="node123"))
+        self.srv = VolExpNode({"endpoint": "http://dummy", "nodeid": "node123"})
 
     def tearDown(self):
         del self.srv
@@ -50,7 +52,7 @@ class TestCsiNode(unittest.TestCase):
             volume_capability=api.VolumeCapability(
                 access_mode=api.VolumeCapability.AccessMode(mode="SINGLE_NODE_WRITER")
             ),
-            publish_context=dict(targetname="iqn.abc:def", user="user123", passwd="pass123"),
+            publish_context={"targetname": "iqn.abc:def", "user": "user123", "passwd": "pass123"},
         )
         res = self.srv.NodeStageVolume(arg, ctxt)
         self.assertIsNotNone(res)
@@ -113,7 +115,7 @@ class TestCsiNode(unittest.TestCase):
             volume_capability=api.VolumeCapability(
                 access_mode=api.VolumeCapability.AccessMode(mode="SINGLE_NODE_WRITER")
             ),
-            publish_context=dict(targetname="iqn.abc:def", user="user123", passwd="pass123"),
+            publish_context={"targetname": "iqn.abc:def", "user": "user123", "passwd": "pass123"},
         )
         res = self.srv.NodeStageVolume(arg, ctxt)
         self.assertIsNone(res)
@@ -126,7 +128,7 @@ class TestCsiNode(unittest.TestCase):
             volume_capability=api.VolumeCapability(
                 access_mode=api.VolumeCapability.AccessMode(mode="SINGLE_NODE_WRITER")
             ),
-            publish_context=dict(targetname="iqn.abc:def", user="user123", passwd="pass123"),
+            publish_context={"targetname": "iqn.abc:def", "user": "user123", "passwd": "pass123"},
         )
         res = self.srv.NodeStageVolume(arg, ctxt)
         self.assertIsNone(res)
@@ -136,7 +138,7 @@ class TestCsiNode(unittest.TestCase):
     @patch("subprocess.run")
     def test_NodeUnstageVolume(self, run, get):
         get.return_value.status_code = 200
-        get.return_value.json.return_value = [dict(targetname="iqn.abc:def", volumes=["volume123"])]
+        get.return_value.json.return_value = [{"targetname": "iqn.abc:def", "volumes": ["volume123"]}]
         run.return_value.stdout = "Logout from [1.1.1.1:3260] successful."
         ctxt = dummyctxt()
         arg = api.NodeUnstageVolumeRequest(
@@ -145,7 +147,7 @@ class TestCsiNode(unittest.TestCase):
         )
         res = self.srv.NodeUnstageVolume(arg, ctxt)
         self.assertIsNotNone(res)
-        get.assert_called_once_with("/export", params=dict(volume="volume123"))
+        get.assert_called_once_with("/export", params={"volume": "volume123"})
         run.assert_any_call(["iscsiadm", "-m", "node", "-T", "iqn.abc:def", "-u"], **self.basearg)
         run.assert_any_call(
             ["iscsiadm", "-m", "discoverydb", "-t", "st", "-p", "1.1.1.1:3260", "-o", "delete"], **self.basearg
@@ -209,7 +211,7 @@ class TestCsiNode(unittest.TestCase):
     def test_NodeExpandVolume(self, run, get):
         run.return_value.stdout = "/dev/sda\n"
         get.return_value.status_code = 200
-        get.return_value.json.return_value = [dict(targetname="iqn.abc:def", volumes=["volume123"])]
+        get.return_value.json.return_value = [{"targetname": "iqn.abc:def", "volumes": ["volume123"]}]
         ctxt = dummyctxt()
         arg = api.NodeExpandVolumeRequest(
             volume_id="volume123", volume_path="/mnt/tmp", capacity_range=api.CapacityRange(required_bytes=10240)

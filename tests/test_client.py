@@ -1,9 +1,11 @@
-import unittest
 import json
 import tempfile
+import unittest
+from unittest.mock import ANY, patch
+
 import requests
-from unittest.mock import patch, ANY
 from click.testing import CliRunner
+
 from volexport.client import cli
 
 
@@ -27,7 +29,7 @@ class TestClientCLI(unittest.TestCase):
             raise res.exception
         self.assertEqual(0, res.exit_code)
         self.assertEqual(output, json.loads(res.stdout))
-        req.assert_called_once_with("GET", "http://dummy.local/volume", allow_redirects=True)
+        req.assert_called_once_with("GET", "http://dummy.local/volume", params=None, allow_redirects=True)
 
     @patch.object(requests.Session, "request")
     def test_volume_list_yaml(self, req):
@@ -39,7 +41,7 @@ class TestClientCLI(unittest.TestCase):
             raise res.exception
         self.assertEqual(0, res.exit_code)
         self.assertEqual("- name: volume1", res.stdout.strip())
-        req.assert_called_once_with("GET", "http://dummy.local/volume", allow_redirects=True)
+        req.assert_called_once_with("GET", "http://dummy.local/volume", params=None, allow_redirects=True)
 
     @patch.object(requests.Session, "request")
     def test_volume_list_pprint(self, req):
@@ -51,7 +53,7 @@ class TestClientCLI(unittest.TestCase):
             raise res.exception
         self.assertEqual(0, res.exit_code)
         self.assertEqual("[{'name': 'volume1'}]", res.stdout.strip())
-        req.assert_called_once_with("GET", "http://dummy.local/volume", allow_redirects=True)
+        req.assert_called_once_with("GET", "http://dummy.local/volume", params=None, allow_redirects=True)
 
     @patch.object(requests.Session, "request")
     def test_volume_list_ijson(self, req):
@@ -63,7 +65,7 @@ class TestClientCLI(unittest.TestCase):
             raise res.exception
         self.assertEqual(0, res.exit_code)
         self.assertEqual(output, json.loads(res.stdout))
-        req.assert_called_once_with("GET", "http://dummy.local/volume", allow_redirects=True)
+        req.assert_called_once_with("GET", "http://dummy.local/volume", params=None, allow_redirects=True)
 
     @patch.object(requests.Session, "request")
     def test_volume_list_notjson(self, req):
@@ -72,7 +74,7 @@ class TestClientCLI(unittest.TestCase):
         req.return_value.json.side_effect = ValueError("not json")
         res = CliRunner().invoke(cli, ["volume-list"], env=self.envs)
         self.assertEqual(1, res.exit_code)
-        req.assert_called_once_with("GET", "http://dummy.local/volume", allow_redirects=True)
+        req.assert_called_once_with("GET", "http://dummy.local/volume", params=None, allow_redirects=True)
 
     @patch.object(requests.Session, "request")
     def test_volume_list_error(self, req):
@@ -83,7 +85,7 @@ class TestClientCLI(unittest.TestCase):
         res = CliRunner().invoke(cli, ["volume-list"], env=self.envs)
         self.assertEqual(exc, res.exception)
         self.assertEqual(1, res.exit_code)
-        req.assert_called_once_with("GET", "http://dummy.local/volume", allow_redirects=True)
+        req.assert_called_once_with("GET", "http://dummy.local/volume", params=None, allow_redirects=True)
 
     @patch.object(requests.Session, "request")
     def test_volume_read(self, req):
@@ -95,7 +97,7 @@ class TestClientCLI(unittest.TestCase):
             raise res.exception
         self.assertEqual(0, res.exit_code)
         self.assertEqual(output, json.loads(res.stdout))
-        req.assert_called_once_with("GET", "http://dummy.local/volume/name", allow_redirects=True)
+        req.assert_called_once_with("GET", "http://dummy.local/volume/name", params=None, allow_redirects=True)
 
     @patch.object(requests.Session, "request")
     def test_volume_read_validation(self, req):
@@ -109,7 +111,7 @@ class TestClientCLI(unittest.TestCase):
         self.assertIn("invalid input", "\n".join(alog.output))
         self.assertEqual(0, res.exit_code)
         self.assertEqual(output, json.loads(res.stdout))
-        req.assert_called_once_with("GET", "http://dummy.local/volume/name", allow_redirects=True)
+        req.assert_called_once_with("GET", "http://dummy.local/volume/name", params=None, allow_redirects=True)
 
     @patch.object(requests.Session, "request")
     def test_volume_read_connection(self, req):
@@ -118,7 +120,7 @@ class TestClientCLI(unittest.TestCase):
         res = CliRunner().invoke(cli, ["volume-read", "--name", "name"], env=self.envs)
         self.assertEqual(exc, res.exception)
         self.assertEqual(1, res.exit_code)
-        req.assert_called_once_with("GET", "http://dummy.local/volume/name", allow_redirects=True)
+        req.assert_called_once_with("GET", "http://dummy.local/volume/name", params=None, allow_redirects=True)
 
     @patch.object(requests.Session, "request")
     def test_volume_create(self, req):
@@ -156,7 +158,7 @@ class TestClientCLI(unittest.TestCase):
             raise res.exception
         self.assertEqual(0, res.exit_code)
         self.assertEqual(output, json.loads(res.stdout))
-        req.assert_called_once_with("GET", "http://dummy.local/stats/volume", allow_redirects=True)
+        req.assert_called_once_with("GET", "http://dummy.local/stats/volume", params=None, allow_redirects=True)
 
     @patch.object(requests.Session, "request")
     def test_volume_readonly(self, req):
@@ -206,7 +208,7 @@ class TestClientCLI(unittest.TestCase):
             raise res.exception
         self.assertEqual(0, res.exit_code)
         self.assertEqual(output, json.loads(res.stdout))
-        req.assert_called_once_with("GET", "http://dummy.local/export", allow_redirects=True)
+        req.assert_called_once_with("GET", "http://dummy.local/export", params=None, allow_redirects=True)
 
     @patch.object(requests.Session, "request")
     def test_export_stats(self, req):
@@ -218,7 +220,7 @@ class TestClientCLI(unittest.TestCase):
             raise res.exception
         self.assertEqual(0, res.exit_code)
         self.assertEqual(output, json.loads(res.stdout))
-        req.assert_called_once_with("GET", "http://dummy.local/stats/export", allow_redirects=True)
+        req.assert_called_once_with("GET", "http://dummy.local/stats/export", params=None, allow_redirects=True)
 
     @patch.object(requests.Session, "request")
     def test_export_create(self, req):
@@ -246,7 +248,7 @@ class TestClientCLI(unittest.TestCase):
             raise res.exception
         self.assertEqual(0, res.exit_code)
         self.assertEqual(output, json.loads(res.stdout))
-        req.assert_called_once_with("GET", "http://dummy.local/export/iqn.abc:def", allow_redirects=True)
+        req.assert_called_once_with("GET", "http://dummy.local/export/iqn.abc:def", params=None, allow_redirects=True)
 
     @patch.object(requests.Session, "request")
     def test_export_delete(self, req):
@@ -282,7 +284,7 @@ class TestClientCLI(unittest.TestCase):
             raise res.exception
         self.assertEqual(0, res.exit_code)
         self.assertEqual(output, json.loads(res.stdout))
-        req.assert_called_once_with("GET", "http://dummy.local/address", allow_redirects=True)
+        req.assert_called_once_with("GET", "http://dummy.local/address", params=None, allow_redirects=True)
 
     @patch.object(requests.Session, "request")
     def test_snapshot_create(self, req):
@@ -300,7 +302,7 @@ class TestClientCLI(unittest.TestCase):
             "POST",
             "http://dummy.local/volume/parent123/snapshot",
             data=None,
-            json=dict(name="vol123", size=10 * 1024 * 1024),
+            json={"name": "vol123", "size": 10 * 1024 * 1024},
         )
 
     @patch.object(requests.Session, "request")
@@ -316,6 +318,7 @@ class TestClientCLI(unittest.TestCase):
         req.assert_called_once_with(
             "GET",
             "http://dummy.local/volume/parent123/snapshot",
+            params=None,
             allow_redirects=True,
         )
 
@@ -332,6 +335,7 @@ class TestClientCLI(unittest.TestCase):
         req.assert_called_once_with(
             "GET",
             "http://dummy.local/volume/parent123/snapshot/vol123",
+            params=None,
             allow_redirects=True,
         )
 
@@ -357,7 +361,7 @@ class TestClientCLI(unittest.TestCase):
             raise res.exception
         self.assertEqual(0, res.exit_code)
         self.assertEqual(output, json.loads(res.stdout))
-        req.assert_called_once_with("GET", "http://dummy.local/mgmt/backup", allow_redirects=True)
+        req.assert_called_once_with("GET", "http://dummy.local/mgmt/backup", params=None, allow_redirects=True)
 
     @patch.object(requests.Session, "request")
     def test_backup_create(self, req):
@@ -383,7 +387,9 @@ class TestClientCLI(unittest.TestCase):
             raise res.exception
         self.assertEqual(0, res.exit_code)
         self.assertEqual("hello\n", output)
-        req.assert_called_once_with("GET", "http://dummy.local/mgmt/backup/backup123", allow_redirects=True)
+        req.assert_called_once_with(
+            "GET", "http://dummy.local/mgmt/backup/backup123", params=None, allow_redirects=True
+        )
 
     @patch.object(requests.Session, "request")
     def test_backup_restore(self, req):
@@ -422,7 +428,7 @@ class TestClientCLI(unittest.TestCase):
             raise res.exception
         self.assertEqual(0, res.exit_code)
         self.assertEqual(output, json.loads(res.stdout))
-        req.assert_called_once_with("DELETE", "http://dummy.local/mgmt/backup", params=dict(keep=10))
+        req.assert_called_once_with("DELETE", "http://dummy.local/mgmt/backup", params={"keep": 10})
 
     @patch.object(requests.Session, "request")
     def test_backup_delete(self, req):
@@ -439,7 +445,7 @@ class TestClientCLI(unittest.TestCase):
     @patch.object(requests.Session, "request")
     @patch("subprocess.run")
     def test_attach_volume(self, run, req):
-        output = dict(targetname="iqn.abc:def", user="user123", passwd="pass123", addresses=["1.1.1.1"])
+        output = {"targetname": "iqn.abc:def", "user": "user123", "passwd": "pass123", "addresses": ["1.1.1.1"]}
         req.return_value.status_code = 200
         req.return_value.json.return_value = output
         res = CliRunner().invoke(cli, ["attach-volume", "--name", "volume123"], env=self.envs)
@@ -447,15 +453,15 @@ class TestClientCLI(unittest.TestCase):
             raise res.exception
         self.assertEqual(0, res.exit_code)
         req.assert_called_once_with(
-            "POST", "http://dummy.local/export", data=None, json=dict(name="volume123", acl=ANY)
+            "POST", "http://dummy.local/export", data=None, json={"name": "volume123", "acl": ANY}
         )
-        basearg = dict(
-            capture_output=True,
-            encoding="utf-8",
-            timeout=10.0,
-            stdin=-3,
-            start_new_session=True,
-        )
+        basearg = {
+            "capture_output": True,
+            "encoding": "utf-8",
+            "timeout": 10.0,
+            "stdin": -3,
+            "start_new_session": True,
+        }
         run.assert_any_call(["sudo", "iscsiadm", "-m", "discovery", "-t", "st", "-p", "1.1.1.1"], **basearg)
         run.assert_any_call(
             [

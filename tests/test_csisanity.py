@@ -1,7 +1,8 @@
-import unittest
 import os
 import shutil
 import subprocess
+import unittest
+
 from volexpcsi.server import boot_server
 
 have_sanity = shutil.which(os.getenv("TEST_CSI_SANITY_BIN", "csi-sanity"))

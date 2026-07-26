@@ -1,8 +1,10 @@
-import unittest
 import json
-from unittest.mock import patch, ANY, MagicMock
-from volexport.main import cli
+import unittest
+from unittest.mock import ANY, MagicMock, patch
+
 from click.testing import CliRunner
+
+from volexport.main import cli
 
 
 class TestCLI(unittest.TestCase):
@@ -48,9 +50,9 @@ class TestCLI(unittest.TestCase):
                 "report": [
                     {
                         "vg": [
-                            dict(
-                                vg_name="vg0",
-                            )
+                            {
+                                "vg_name": "vg0",
+                            }
                         ]
                     }
                 ]

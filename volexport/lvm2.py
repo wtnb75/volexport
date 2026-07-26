@@ -1,18 +1,19 @@
+import datetime
+import json
 import os
 import shlex
-import datetime
 import shutil
 import string
 import uuid
-import json
+from abc import abstractmethod
+from logging import getLogger
 from pathlib import Path
 from subprocess import CalledProcessError
-from abc import abstractmethod
-from .util import runcmd
+from typing import override
+
 from .config import config
 from .exceptions import InvalidArgument
-from logging import getLogger
-from typing import override
+from .util import runcmd
 
 _log = getLogger(__name__)
 
@@ -251,7 +252,7 @@ class LV(Base):
         """Create a thin pool logical volume"""
         assert self.name is not None
         runcmd(["lvcreate", "--thinpool", self.name, "--size", f"{size}b", self.vgname])
-        return dict(name=self.name, size=size, device=self.volume_vol2path())
+        return {"name": self.name, "size": size, "device": self.volume_vol2path()}
 
     def create_thin(self, size: int, thinpool: str) -> dict | None:
         """Create a thin logical volume in a thin pool"""
@@ -342,17 +343,17 @@ class LV(Base):
                 break
         else:
             name = vol["lv_name"]
-        return dict(
-            name=name,
-            created=created.isoformat(),
-            size=size,
-            used=used,
-            readonly=readonly,
-            thin=thin,
-            parent=parent,
-            lvm_name=vol["lv_name"],
-            lvm_id=vol["lv_uuid"],
-        )
+        return {
+            "name": name,
+            "created": created.isoformat(),
+            "size": size,
+            "used": used,
+            "readonly": readonly,
+            "thin": thin,
+            "parent": parent,
+            "lvm_name": vol["lv_name"],
+            "lvm_id": vol["lv_uuid"],
+        }
 
     def volume_list(self):
         """List all logical volumes in the volume group"""

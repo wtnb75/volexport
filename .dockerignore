@@ -1,6 +1,7 @@
 *
 !volexport
 !volexpcsi
-!requirements*.txt
-!setup.*
+!pyproject.toml
+!uv.lock
+!README.md
 !entrypoint.sh

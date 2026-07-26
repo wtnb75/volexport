@@ -1,7 +1,9 @@
 import os
+from logging import getLogger
+
 import click
 import uvicorn
-from logging import getLogger
+
 from .cli_utils import verbose_option
 from .version import VERSION
 
@@ -121,15 +123,16 @@ def apispec(format):
 def csiserver(hostport, endpoint, node_id, private_key, cert, rootcert, use_mtls, max_workers):
     """Run the CSI driver service"""
     from pathlib import Path
+
     from volexpcsi.server import boot_server
 
     _log.info("starting server: %s", hostport)
-    conf = dict(
-        endpoint=endpoint,
-        nodeid=node_id,
-        max_workers=max_workers,
-        become_method="sudo",
-    )
+    conf = {
+        "endpoint": endpoint,
+        "nodeid": node_id,
+        "max_workers": max_workers,
+        "become_method": "sudo",
+    }
     if private_key and cert:
         import grpc
 

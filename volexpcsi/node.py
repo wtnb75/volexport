@@ -1,11 +1,14 @@
-import grpc
-import subprocess
 import shlex
-from pathlib import Path
+import subprocess
 from logging import getLogger
-from google.protobuf.message import Message
+from pathlib import Path
+
+import grpc
 from google.protobuf.json_format import MessageToDict
+from google.protobuf.message import Message
+
 from volexport.client import VERequest
+
 from . import api
 from .accesslog import servicer_accesslog
 
@@ -22,9 +25,8 @@ class VolExpNode(api.NodeServicer):
     def _validate(self, request: Message):
         notempty = {"volume_id", "target_path"}
         for i in notempty:
-            if hasattr(request, i):
-                if not getattr(request, i):
-                    raise ValueError(f"empty {i}")
+            if hasattr(request, i) and not getattr(request, i):
+                raise ValueError(f"empty {i}")
 
     def runcmd(self, cmd: list[str], root: bool = True):
         """Run a command"""
@@ -89,7 +91,7 @@ class VolExpNode(api.NodeServicer):
         if not request.staging_target_path:
             raise ValueError("no staging target path")
         # detach iscsi
-        res = self.req.get("/export", params=dict(volume=request.volume_id))
+        res = self.req.get("/export", params={"volume": request.volume_id})
         res.raise_for_status()
         for tgt in res.json():
             if request.volume_id not in tgt["volumes"]:
@@ -106,7 +108,6 @@ class VolExpNode(api.NodeServicer):
             except subprocess.CalledProcessError as e:
                 if e.returncode == 21 and "No matching sessions found" in e.stderr:
                     _log.info("already logout? %s", targetname)
-                    pass
                 else:
                     raise
             if portal:
@@ -145,7 +146,7 @@ class VolExpNode(api.NodeServicer):
         self._validate(request)
         if not request.volume_path:
             raise ValueError("no volume path")
-        res = self.req.get("/export", params=dict(volume=request.volume_id))
+        res = self.req.get("/export", params={"volume": request.volume_id})
         res.raise_for_status()
         for tgt in res.json():
             if request.volume_id not in tgt["volumes"]:

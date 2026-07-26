@@ -1,0 +1,95 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "volexport"
+dynamic = ["version"]
+description = "LVM2 + tgtd, API server"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [
+    { name = "Watanabe Takashi", email = "wtnb75@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "fastapi",
+    "PyYAML",
+    "click",
+    "pydantic-settings",
+    "python-multipart",
+    "uvicorn",
+    "ifaddr",
+    "requests",
+]
+
+[project.optional-dependencies]
+csi = [
+    "grpcio",
+    "grpcio-health-checking",
+    "grpcio-reflection",
+]
+
+[project.scripts]
+volexport = "volexport.main:cli"
+volexp-client = "volexport.client:cli"
+
+[project.urls]
+Homepage = "https://github.com/wtnb75/volexport"
+
+[tool.hatch.version]
+path = "volexport/version.py"
+pattern = "VERSION = ['\"](?P<version>[^'\"]+)['\"]"
+
+[tool.hatch.build.targets.wheel]
+packages = ["volexport", "volexpcsi"]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pytest-github-actions-annotate-failures",
+    "pytest-env",
+    "pytest-httpx",
+    "grpcio-tools",
+    "ruff",
+    "pdoc",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+python_files = ["test_*.py"]
+addopts = "--cov-report=html:cover --cov-report=term --cov-branch --cov-reset --cov=volexport --cov=volexpcsi"
+env = [
+    "VOLEXP_VG=vg0",
+    "VOLEXP_NICS=[\"eth0\"]",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+# BLE001/TRY002: volexport's HTTP client response logging and API/backup
+# validation code intentionally catch/raise bare Exception (to keep response
+# logging resilient to any decode error, and to signal malformed backup data
+# without introducing a bespoke exception hierarchy). Narrowing these is a
+# behavioral/design change out of scope for this packaging migration.
+# DTZ005: the backup filename timestamp intentionally uses naive local time
+# (it's a filename, not a stored instant), so no tz argument is needed.
+# PLW1510: the three subprocess.run() call sites intentionally omit check=
+# (defaulting to False) because the caller inspects/logs res.returncode
+# before calling res.check_returncode() itself; adding an explicit
+# check=False changes the mocked call signature asserted by many existing
+# subprocess.run tests for no behavioral benefit.
+ignore = ["BLE001", "TRY002", "DTZ005", "PLW1510"]
+
+[tool.ruff.lint.per-file-ignores]
+# RUF012: unittest.TestCase class attributes here are read-only fixture data
+# (never mutated), not function default arguments, so they don't share the
+# B006 mutable-default-argument bug class.
+"tests/*" = ["RUF012"]
