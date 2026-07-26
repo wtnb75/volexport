@@ -1,18 +1,19 @@
-import unittest
 import subprocess
-from unittest.mock import patch, ANY
+import unittest
+from unittest.mock import ANY, patch
+
 from volexport import tgtd
 
 
 class TestTgtd(unittest.TestCase):
     maxDiff = None
-    default_exec = dict(
-        capture_output=True,
-        encoding="utf-8",
-        timeout=10.0,
-        stdin=subprocess.DEVNULL,
-        start_new_session=True,
-    )
+    default_exec = {
+        "capture_output": True,
+        "encoding": "utf-8",
+        "timeout": 10.0,
+        "stdin": subprocess.DEVNULL,
+        "start_new_session": True,
+    }
 
     def test_parse_sys(self):
         testdata_sys = """

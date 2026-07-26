@@ -1,9 +1,12 @@
+from logging import getLogger
+
 import grpc
 import requests
-from volexport.version import VERSION
-from volexport.client import VERequest
 from google.protobuf import wrappers_pb2
-from logging import getLogger
+
+from volexport.client import VERequest
+from volexport.version import VERSION
+
 from . import api
 from .accesslog import servicer_accesslog
 

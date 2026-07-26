@@ -1,15 +1,17 @@
-import unittest
 import json
 import subprocess
+import unittest
 from collections import namedtuple
-from unittest.mock import patch, ANY, MagicMock
+from unittest.mock import ANY, MagicMock, patch
+
 from fastapi.testclient import TestClient
+
 from volexport.api import api
 
 
 class TestExportAPI(unittest.TestCase):
     maxDiff = None
-    run_basearg = dict(capture_output=True, encoding="utf-8", timeout=10.0, stdin=-3, start_new_session=True)
+    run_basearg = {"capture_output": True, "encoding": "utf-8", "timeout": 10.0, "stdin": -3, "start_new_session": True}
 
     def test_healthcheck(self):
         res = TestClient(api).get("/health")
@@ -87,9 +89,9 @@ Target 1: iqn.def
         0.0.0.0/0
         192.168.64.0/24
 """
-    lv0 = dict(lv_name="vol00", lv_full_name="vg0/vol00", lv_path="/dev/vg0/vol00", lv_tags="volname.vol00")
-    lv1 = dict(lv_name="vol01", lv_full_name="vg0/vol01", lv_path="/dev/vg0/vol01", lv_tags="volname.vol01")
-    lv2 = dict(lv_name="vol02", lv_full_name="vg0/vol02", lv_path="/dev/vg0/vol02", lv_tags="volname.vol02")
+    lv0 = {"lv_name": "vol00", "lv_full_name": "vg0/vol00", "lv_path": "/dev/vg0/vol00", "lv_tags": "volname.vol00"}
+    lv1 = {"lv_name": "vol01", "lv_full_name": "vg0/vol01", "lv_path": "/dev/vg0/vol01", "lv_tags": "volname.vol01"}
+    lv2 = {"lv_name": "vol02", "lv_full_name": "vg0/vol02", "lv_path": "/dev/vg0/vol02", "lv_tags": "volname.vol02"}
     lvs0_str = json.dumps({"report": [{"lv": [lv0]}]})
     lvs1_str = json.dumps({"report": [{"lv": [lv1]}]})
     lvs2_str = json.dumps({"report": [{"lv": [lv2]}]})
@@ -108,20 +110,20 @@ Target 1: iqn.def
         self.assertEqual(200, res.status_code)
         self.assertEqual(
             [
-                dict(
-                    protocol="iscsi",
-                    tid=1,
-                    targetname="iqn.def",
-                    connected=[
-                        dict(
-                            initiator="iqn.1996-04.org.alpinelinux:01:c1f2520715f",
-                            address=["192.168.64.41", "192.168.64.42"],
-                        )
+                {
+                    "protocol": "iscsi",
+                    "tid": 1,
+                    "targetname": "iqn.def",
+                    "connected": [
+                        {
+                            "initiator": "iqn.1996-04.org.alpinelinux:01:c1f2520715f",
+                            "address": ["192.168.64.41", "192.168.64.42"],
+                        }
                     ],
-                    acl=["0.0.0.0/0", "192.168.64.0/24"],
-                    users=["user123"],
-                    volumes=["vol01", "vol02"],
-                )
+                    "acl": ["0.0.0.0/0", "192.168.64.0/24"],
+                    "users": ["user123"],
+                    "volumes": ["vol01", "vol02"],
+                }
             ],
             res.json(),
         )
@@ -136,24 +138,24 @@ Target 1: iqn.def
             lvs1,
             lvs2,
         ]
-        res = TestClient(api).get("/export", params=dict(volume="vol02"))
+        res = TestClient(api).get("/export", params={"volume": "vol02"})
         self.assertEqual(200, res.status_code)
         self.assertEqual(
             [
-                dict(
-                    protocol="iscsi",
-                    tid=1,
-                    targetname="iqn.def",
-                    connected=[
-                        dict(
-                            initiator="iqn.1996-04.org.alpinelinux:01:c1f2520715f",
-                            address=["192.168.64.41", "192.168.64.42"],
-                        )
+                {
+                    "protocol": "iscsi",
+                    "tid": 1,
+                    "targetname": "iqn.def",
+                    "connected": [
+                        {
+                            "initiator": "iqn.1996-04.org.alpinelinux:01:c1f2520715f",
+                            "address": ["192.168.64.41", "192.168.64.42"],
+                        }
                     ],
-                    acl=["0.0.0.0/0", "192.168.64.0/24"],
-                    users=["user123"],
-                    volumes=["vol01", "vol02"],
-                )
+                    "acl": ["0.0.0.0/0", "192.168.64.0/24"],
+                    "users": ["user123"],
+                    "volumes": ["vol01", "vol02"],
+                }
             ],
             res.json(),
         )
@@ -168,7 +170,7 @@ Target 1: iqn.def
             lvs1,
             lvs2,
         ]
-        res = TestClient(api).get("/export", params=dict(volume="vol03"))
+        res = TestClient(api).get("/export", params={"volume": "vol03"})
         self.assertEqual(200, res.status_code)
         self.assertEqual([], res.json())
 
@@ -185,20 +187,20 @@ Target 1: iqn.def
         res = TestClient(api).get("/export/iqn.def")
         self.assertEqual(200, res.status_code)
         self.assertEqual(
-            dict(
-                protocol="iscsi",
-                tid=1,
-                targetname="iqn.def",
-                connected=[
-                    dict(
-                        initiator="iqn.1996-04.org.alpinelinux:01:c1f2520715f",
-                        address=["192.168.64.41", "192.168.64.42"],
-                    )
+            {
+                "protocol": "iscsi",
+                "tid": 1,
+                "targetname": "iqn.def",
+                "connected": [
+                    {
+                        "initiator": "iqn.1996-04.org.alpinelinux:01:c1f2520715f",
+                        "address": ["192.168.64.41", "192.168.64.42"],
+                    }
                 ],
-                acl=["0.0.0.0/0", "192.168.64.0/24"],
-                users=["user123"],
-                volumes=["vol01", "vol02"],
-            ),
+                "acl": ["0.0.0.0/0", "192.168.64.0/24"],
+                "users": ["user123"],
+                "volumes": ["vol01", "vol02"],
+            },
             res.json(),
         )
 
@@ -820,7 +822,7 @@ Target 1: iqn.def
         res = TestClient(api).get("/stats/export")
         self.assertEqual(200, res.status_code)
         self.assertEqual(
-            dict(targets=1, clients=1, volumes=2),
+            {"targets": 1, "clients": 1, "volumes": 2},
             res.json(),
         )
 

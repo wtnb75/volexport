@@ -1,16 +1,16 @@
-import click
-import json
-import yaml
-import pprint
 import functools
+import json
+import pprint
 from decimal import Decimal
-from typing import Optional
 from logging import getLogger
+
+import click
+import yaml
 
 _log = getLogger(__name__)
 
 
-def set_verbose(verbose: Optional[bool]):
+def set_verbose(verbose: bool | None):
     from logging import basicConfig
 
     fmt = "%(asctime)s %(levelname)s %(name)s %(message)s"

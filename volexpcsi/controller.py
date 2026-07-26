@@ -1,8 +1,11 @@
-import grpc
 from logging import getLogger
-from volexport.client import VERequest
-from google.protobuf.message import Message
+
+import grpc
 from google.protobuf.json_format import MessageToDict
+from google.protobuf.message import Message
+
+from volexport.client import VERequest
+
 from . import api
 from .accesslog import servicer_accesslog
 
@@ -16,9 +19,8 @@ class VolExpControl(api.ControllerServicer):
         self.req = VERequest(config["endpoint"])
 
     def _validate(self, request: Message):
-        if hasattr(request, "volume_id"):
-            if not getattr(request, "volume_id"):
-                raise ValueError("volume id is empty")
+        if hasattr(request, "volume_id") and not request.volume_id:
+            raise ValueError("volume id is empty")
 
     def GetCapacity(self, request: api.GetCapacityRequest, context: grpc.ServicerContext):
         res = self.req.get("/stats/volume")
@@ -66,7 +68,6 @@ class VolExpControl(api.ControllerServicer):
                 capacity_bytes=vol.get("size"),
             )
             stat = api.ListVolumesResponse.VolumeStatus(
-                volume_condition=api.VolumeCondition(abnormal=False),
                 published_node_ids=vol.get("addresses", []),
             )
             ent = api.ListVolumesResponse.Entry(volume=vent, status=stat)
@@ -91,15 +92,15 @@ class VolExpControl(api.ControllerServicer):
             return api.CreateVolumeResponse(volume=api.Volume(capacity_bytes=volsize, volume_id=request.name))
         res = self.req.post(
             "/volume",
-            json=dict(
-                name=request.name,
-                size=request.capacity_range.required_bytes,
-            ),
+            json={
+                "name": request.name,
+                "size": request.capacity_range.required_bytes,
+            },
         )
         res.raise_for_status()
         resj = res.json()
         volname = resj["name"]
-        mkfsres = self.req.post(f"/volume/{volname}/mkfs", json=dict())
+        mkfsres = self.req.post(f"/volume/{volname}/mkfs", json={})
         mkfsres.raise_for_status()
         return api.CreateVolumeResponse(
             volume=api.Volume(
@@ -127,7 +128,7 @@ class VolExpControl(api.ControllerServicer):
         #     raise ValueError("invalid mode")
         if not request.volume_capability.mount.fs_type:
             raise ValueError("invalid type")
-        res = self.req.post("/export", json=dict(name=request.volume_id, readonly=request.readonly, acl=None))
+        res = self.req.post("/export", json={"name": request.volume_id, "readonly": request.readonly, "acl": None})
         res.raise_for_status()
         resj = res.json()
         ctxt = {k: str(v) for k, v in resj.items()}
@@ -135,7 +136,7 @@ class VolExpControl(api.ControllerServicer):
 
     def ControllerUnpublishVolume(self, request: api.ControllerUnpublishVolumeRequest, context: grpc.ServicerContext):
         self._validate(request)
-        qres = self.req.get("/export", params=dict(volume=request.volume_id))
+        qres = self.req.get("/export", params={"volume": request.volume_id})
         qres.raise_for_status()
         for tgt in qres.json():
             if request.volume_id not in tgt["volumes"]:
@@ -148,7 +149,7 @@ class VolExpControl(api.ControllerServicer):
 
     def ControllerExpandVolume(self, request: api.ControllerExpandVolumeRequest, context: grpc.ServicerContext):
         self._validate(request)
-        res = self.req.post(f"/volume/{request.volume_id}", json=dict(size=request.capacity_range.required_bytes))
+        res = self.req.post(f"/volume/{request.volume_id}", json={"size": request.capacity_range.required_bytes})
         res.raise_for_status()
         return api.ControllerExpandVolumeResponse(capacity_bytes=res.json()["size"], node_expansion_required=True)
 
@@ -157,7 +158,7 @@ class VolExpControl(api.ControllerServicer):
         res = self.req.get(f"/volume/{request.volume_id}")
         res.raise_for_status()
         resj = res.json()
-        qres = self.req.get("/export", params=dict(volume=request.volume_id))
+        qres = self.req.get("/export", params={"volume": request.volume_id})
         qres.raise_for_status()
         qresj = qres.json()
         nodes = []
@@ -168,9 +169,7 @@ class VolExpControl(api.ControllerServicer):
                 capacity_bytes=resj["size"],
                 volume_id=resj["name"],
             ),
-            status=api.ControllerGetVolumeResponse.VolumeStatus(
-                published_node_ids=nodes, volume_condition=api.VolumeCondition(abnormal=False)
-            ),
+            status=api.ControllerGetVolumeResponse.VolumeStatus(published_node_ids=nodes),
         )
 
     def ControllerModifyVolume(self, request: api.ControllerModifyVolumeRequest, context: grpc.ServicerContext):

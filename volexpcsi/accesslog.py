@@ -1,12 +1,13 @@
-import grpc
 import functools
+import inspect
 import time
 import urllib.parse
-import inspect
-from typing import Callable, Type
-from google.protobuf.message import Message
-from google.protobuf.json_format import MessageToJson
+from collections.abc import Callable
 from logging import getLogger
+
+import grpc
+from google.protobuf.json_format import MessageToJson
+from google.protobuf.message import Message
 from requests.exceptions import HTTPError, Timeout
 
 _log = getLogger(__name__)
@@ -94,7 +95,7 @@ def accesslog(f: Callable):
     return _
 
 
-def servicer_accesslog(cls: Type):
+def servicer_accesslog(cls: type):
     names = {n for n, fn in inspect.getmembers(cls.mro()[1]) if not n.startswith("__") and callable(fn)}
     _log.info("decorate names: %s", names)
     for name, fn in inspect.getmembers(cls):

@@ -1,7 +1,8 @@
 import unittest
-from unittest.mock import patch, ANY
-from volexpcsi.identity import VolExpIdentity
+from unittest.mock import ANY, patch
+
 from volexpcsi import api
+from volexpcsi.identity import VolExpIdentity
 from volexpcsi.server import boot_server
 
 
@@ -22,7 +23,7 @@ class TestCsiIdentity(unittest.TestCase):
         pass
 
     def test_GetPluginInfo(self):
-        hdl = VolExpIdentity(dict(endpoint="hello"))
+        hdl = VolExpIdentity({"endpoint": "hello"})
         req = api.GetPluginInfoRequest()
         ctxt = dummyctxt()
         res = hdl.GetPluginInfo(req, ctxt)
@@ -30,7 +31,7 @@ class TestCsiIdentity(unittest.TestCase):
         self.assertNotEqual("", res.vendor_version)
 
     def test_GetPluginCapabilities(self):
-        hdl = VolExpIdentity(dict(endpoint="hello"))
+        hdl = VolExpIdentity({"endpoint": "hello"})
         req = api.GetPluginCapabilitiesRequest()
         ctxt = dummyctxt()
         res = hdl.GetPluginCapabilities(req, ctxt)
@@ -39,7 +40,7 @@ class TestCsiIdentity(unittest.TestCase):
     @patch("volexport.client.VERequest.get")
     def test_Probe(self, vreq):
         vreq.return_value.status_code = 200
-        hdl = VolExpIdentity(dict(endpoint="hello"))
+        hdl = VolExpIdentity({"endpoint": "hello"})
         req = api.ProbeRequest()
         ctxt = dummyctxt()
         res = hdl.Probe(req, ctxt)
@@ -49,7 +50,7 @@ class TestCsiIdentity(unittest.TestCase):
     @patch("volexport.client.VERequest.get")
     def test_Probe_fail(self, vreq):
         vreq.side_effect = TimeoutError("timed out")
-        hdl = VolExpIdentity(dict(endpoint="hello"))
+        hdl = VolExpIdentity({"endpoint": "hello"})
         req = api.ProbeRequest()
         ctxt = dummyctxt()
         res = hdl.Probe(req, ctxt)
@@ -59,7 +60,7 @@ class TestCsiIdentity(unittest.TestCase):
     @patch("volexport.client.VERequest.get")
     def test_Probe_notfound(self, vreq):
         vreq.return_value.status_code = 404
-        hdl = VolExpIdentity(dict(endpoint="hello"))
+        hdl = VolExpIdentity({"endpoint": "hello"})
         req = api.ProbeRequest()
         ctxt = dummyctxt()
         res = hdl.Probe(req, ctxt)
@@ -71,5 +72,5 @@ class TestCsiBoot(unittest.TestCase):
     @patch("grpc.server")
     def test_boot(self, server):
         server.return_value.add_insecure_port.return_value = 9999
-        res = boot_server("localhost:9999", dict(endpoint="http://localhost:9998"))
+        res = boot_server("localhost:9999", {"endpoint": "http://localhost:9998"})
         self.assertEqual((9999, ANY), res)
