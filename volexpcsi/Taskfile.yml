@@ -28,12 +28,12 @@ tasks:
       - "python -m grpc_tools.protoc -Iapi --pyi_out=api --python_out=api --grpc_python_out=api api/csi.proto"
       - |
         cat <<EOF > api/__init__.py
-        import sys
         import os
+        import sys
 
         sys.path.append(os.path.dirname(__file__))
-        from .csi_pb2 import *  # noqa: F403
-        from .csi_pb2_grpc import *  # noqa: F403
+        from .csi_pb2 import *
+        from .csi_pb2_grpc import *
         EOF
 
   build:
