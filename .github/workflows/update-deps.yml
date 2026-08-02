@@ -12,7 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - name: Install Task
+      uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52 # v3.0.0
     - uses: wtnb75/actions/python@v1
+      with:
+        extra-args: "--extra csi"
+    - run: uv run task -d volexpcsi build
     - uses: wtnb75/actions/pyupdate@v1
       with:
         test-args: "-xs"
