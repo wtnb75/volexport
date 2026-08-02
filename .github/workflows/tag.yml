@@ -18,24 +18,24 @@ jobs:
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
     - name: Install Task
-      uses: arduino/setup-task@b91d5d2c96a56797b48ac1e0e89220bf64044611 # v2.0.0
+      uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52 # v3.0.0
     - name: versioning
       run: "echo \"VERSION = '${GITHUB_REF##*/v}'\" > volexport/version.py"
-    - uses: wtnb75/actions/python@9789197715f5a6b54a25832ce27193be50662266 # v1.0.4
+    - uses: wtnb75/actions/python@v1
       with:
         extra-args: "--extra csi"
     - run: uv run task -d volexpcsi build
-    - uses: wtnb75/actions/ruff@9789197715f5a6b54a25832ce27193be50662266 # v1.0.4
-    - uses: wtnb75/actions/pytest@9789197715f5a6b54a25832ce27193be50662266 # v1.0.4
+    - uses: wtnb75/actions/ruff@v1
+    - uses: wtnb75/actions/pytest@v1
     - id: wheel
-      uses: wtnb75/actions/wheel@9789197715f5a6b54a25832ce27193be50662266 # v1.0.4
+      uses: wtnb75/actions/wheel@v1
     - id: pdoc
-      uses: wtnb75/actions/pdoc@9789197715f5a6b54a25832ce27193be50662266 # v1.0.4
+      uses: wtnb75/actions/pdoc@v1
       with:
         output-dir: docs
         module: volexport
     - name: install node
-      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
     - name: api spec
       shell: bash
       run: |
@@ -47,7 +47,7 @@ jobs:
         username: ${{ secrets.TWINE_USERNAME }}
         password: ${{ secrets.TWINE_PASSWORD }}
         file: dist/${{ steps.wheel.outputs.filename }}
-    - uses: wtnb75/actions/docker@9789197715f5a6b54a25832ce27193be50662266 # v1.0.4
+    - uses: wtnb75/actions/docker@v1
       with:
         push: 'true'
         context: .
